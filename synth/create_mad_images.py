@@ -1,8 +1,5 @@
 #!/usr/bin/env python3
-"""create MAD Competition images, analogous to create_metamers.py
-
-Note that, unlike create_metamers.py, this uses the synthesis methods within
-plenoptic.
+"""create MAD Competition images
 
 """
 from . import create_metamers
@@ -14,7 +11,6 @@ import time
 import numpy as np
 import os.path as op
 import imageio
-from .utils import convert_im_to_int
 import matplotlib as mpl
 
 
@@ -112,10 +108,9 @@ def setup_metric(metric_name, image, min_ecc, max_ecc, cache_dir,
             metric = po.metric.mse
         model = None
     else:
-        metric_name, scaling = re.findall('([a-zA-z_]+)_scaling-([0-9.]+)', metric_name)[0]
-        model = create_metamers.setup_model(metric_name, float(scaling), image,
+        model = create_metamers.setup_model(metric_name, image,
                                             min_ecc, max_ecc, cache_dir,
-                                            normalize_dict)[0]
+                                            normalize_dict)
         model = create_metamers.setup_device(model, gpu_id=gpu_id)[0]
         # do this because we want the metric name to reflect which model we're
         # using. We'll never be comparing the same model family against itself
@@ -264,7 +259,7 @@ def save(save_path, mad, fix_model=None, synthesis_model=None):
     - The finished MADimage in its original float32 format (with
       values between 0 and 1, as a numpy array), at
       ``os.path.splitext(save_path)[0] + "_mad.npy"``.
-    - The finished metamer 8-bit image, at
+    - The finished MAD 8-bit image, at
       ``os.path.splitext(save_path)[0] + "_mad.png"``.
     - The video showing synthesis progress at
       ``os.path.splitext(save_path)[0] + "_synthesis.mp4"``. We use this
@@ -323,10 +318,6 @@ def main(fix_metric_name, synthesis_metric_name, image, synthesis_target,
          optimizer='Adam', metric_tradeoff_lambda=None,
          range_penalty_lambda=.1, continue_path=None, num_threads=None):
     r"""Create MAD images.
-
-    Given a model_name, model parameters, a target image, and some
-    optimization parameters, we do our best to synthesize a metamer,
-    saving the outputs after it finishes.
 
     `fix_metric_name` and `synthesis_metric_name` must either specify a metric
     (currently: 'ssim' or 'mse') or one of our foveated models. If a foveated
@@ -399,22 +390,19 @@ def main(fix_metric_name, synthesis_metric_name, image, synthesis_target,
         The maximum eccentricity for the pooling windows (see
         plenoptic.simul.VentralStream for more details)
     learning_rate : float, optional
-        The learning rate to pass to metamer.synthesize's optimizer
+        The learning rate to pass to optimizer
     max_iter : int, optional
         The maximum number of iterations we allow the synthesis
         optimization to run for
     stop_criterion : float, optional
         The stop criterion. If the loss has changed by less than this over the
-        past stop_iters_to_check iterations, we quit out. Corresponds to
-        loss_thresh in create_metamers.py
+        past stop_iters_to_check iterations, we quit out.
     stop_iters_to_check : int, optional
         How many iterations back to check in order to see if the loss has
-        stopped decreasing. Corresponds to loss_change_iter in
-        create_metamers.py
+        stopped decreasing.
     save_path : str or None, optional
-        If a str, the path to the file to save the metamer object to. If
-        None, we don't save the synthesis output (that's probably a bad
-        idea)
+        If a str, the path to the file to save the MADCompetition object to. If
+        None, we don't save the synthesis output (that's probably a bad idea)
     initial_image : float, optional
         std dev of Gaussian noise added to image to initialize synthesis.
     gpu_id : int or None, optional
@@ -441,7 +429,7 @@ def main(fix_metric_name, synthesis_metric_name, image, synthesis_target,
     range_penalty_lambda :
         Lambda to multiply by range penalty and add to loss.
     continue_path : str or None, optional
-        If None, we synthesize a new metamer. If str, this should be the
+        If None, we synthesize a new MAD image. If str, this should be the
         path to a previous synthesis run, which we are resuming. In that
         case, you may set learning_rate to None (in which case we resume
         where we left off) and set max_iter to a different value (the
@@ -487,10 +475,6 @@ def main(fix_metric_name, synthesis_metric_name, image, synthesis_target,
     print(synthesis_metric_str)
     print(fix_metric_str)
     image = create_metamers.setup_device(image, gpu_id=gpu_id)[0]
-    # want to set store_progress before we potentially change max_iter below,
-    # because if we're resuming synthesis, want to have the same store_progress
-    # arg. don't want to store too often, otherwise we slow down and use too
-    # much memory. this way we store at most 100 time points
     store_progress = max(10, max_iter//100)
     mad = po.synth.MADCompetition(image, synthesis_metric, fix_metric, synthesis_target, initial_image,
                                   metric_tradeoff_lambda, range_penalty_lambda, allowed_range=(0, 255))
@@ -506,10 +490,6 @@ def main(fix_metric_name, synthesis_metric_name, image, synthesis_target,
     print(f"Using learning rate {learning_rate}, stop_criterion {stop_criterion} (stop_iters_to_check "
           f"{stop_iters_to_check}), and max_iter {max_iter}")
     start_time = time.time()
-    # note that there's a possibility that max_iter=0 (in particular, if we're
-    # loading in an inprogress.pt file that finished synthesis but had trouble
-    # when saving outputs). we still want to call synthesize, because there's a
-    # small amount of wrapping up that needs to happen
     mad.synthesize(max_iter=max_iter, optimizer=opt,
                    store_progress=store_progress,
                    stop_criterion=stop_criterion,
