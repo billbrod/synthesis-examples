@@ -1,0 +1,22 @@
+name: synth
+channels:
+  - anaconda
+  - conda-forge
+  - defaults
+  - bioconda
+  - pytorch
+dependencies:
+  - python>=3.7
+  - pip
+  - ipykernel
+  - scipy>=1.6
+  - pandas>=1.2
+  - snakemake-minimal>=5.10,<6.0
+  - imageio>=2.9
+  - scikit-image>=0.18
+  - matplotlib>=3.3
+  - pytorch>=1.8
+  - gputil>=1.4.0
+  - pip:
+      - pyrtools>=1.0
+      - git+https://github.com/LabForComputationalVision/plenoptic.git@main

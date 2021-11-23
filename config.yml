@@ -1,0 +1,265 @@
+DATA_DIR: "/home/billbrod/Desktop/metamers/"
+# DATA_DIR: "/mnt/gdrive/"
+TEXTURE_DIR: "/home/billbrod/Desktop/textures/cropped512-gray-jpg"
+# TEXTURE_DIR: "/home/billbrod/Desktop/tmp/textures-subset-for-testing"
+
+# required for making some of the figures
+INKSCAPE_PREF_FILE: "/home/billbrod/.config/inkscape/preferences.xml"
+
+REF_IMAGE_TEMPLATE_PATH: "{DATA_DIR}/ref_images/{image_name}.png"
+METAMER_TEMPLATE_PATH: "{DATA_DIR}/metamers/{model_name}/{image_name}/scaling-{scaling}/opt-{optimizer}_loss-{loss}/fr-{fract_removed}_lc-{loss_fract}_lt-{loss_change_thresh}_li-{loss_change_iter}_cf-{coarse_to_fine}_{clamp}-{clamp_each_iter}/seed-{seed}_init-{init_type}_lr-{learning_rate}_e0-{min_ecc:.03f}_em-{max_ecc:.03f}_iter-{max_iter}_thresh-{loss_thresh}_gpu-{gpu}{save_all}_metamer.png"
+MAD_TEMPLATE_PATH: "{DATA_DIR}/mad_images/fix-{fix_model_name}/synth-{synth_model_name}_{synth_target}/{image_name}/opt-{optimizer}_tradeoff-{tradeoff_lambda}_penalty-{range_lambda}_li-{loss_change_iter}/seed-{seed}_init-{init_type}_lr-{learning_rate}_e0-{min_ecc:.03f}_em-{max_ecc:.03f}_iter-{max_iter}_thresh-{loss_thresh}_gpu-{gpu}_mad.png"
+
+# if you want to run the checks against the original Freeman and Simoncelli
+# (rule freeman_check in Snakefile), 2011 windows, download these two matlab
+# packages from github (https://github.com/freeman-lab/metamers/ and
+# https://github.com/LabForComputationalVision/matlabPyrTools, respectively) and
+# update the paths below
+FREEMAN_METAMER_PATH: "/home/billbrod/Documents/freeman_metamers"
+MATLABPYRTOOLS_PATH: "/home/billbrod/Documents/matlab_toolboxes/matlabPyrTools"
+
+IMAGE_NAME:
+  template: "{ref_image}_{preproc}_size-{size}"
+  ref_image:
+    - 'azulejos'
+    - 'tiles'
+    - 'bike'
+    - 'graffiti'
+    - 'llama'
+    - 'terraces'
+    - 'treetop_symmetric'
+    - 'grooming_symmetric'
+    - 'palm_symmetric'
+    - 'leaves_symmetric'
+    - 'portrait_symmetric'
+    - 'troop_symmetric'
+    - 'quad_symmetric'
+    - 'highway_symmetric'
+    - 'ivy'
+    - 'nyc'
+    - 'rocks'
+    - 'boats'
+    - 'gnarled'
+    - 'lettuce'
+  preproc: 'range-.05,.95'
+  size: '2048,2600'
+
+OLD_SEEDS:
+  seeds:
+    - 0
+    - 1
+    - 2
+  image_names:
+    - 'azulejos_range-.05,.95_size-2048,2600'
+    - 'tiles_range-.05,.95_size-2048,2600'
+    - 'bike_range-.05,.95_size-2048,2600'
+    - 'graffiti_range-.05,.95_size-2048,2600'
+    - 'llama_range-.05,.95_size-2048,2600'
+    - 'terraces_range-.05,.95_size-2048,2600'
+  scaling:
+    RGC:
+      - .01
+      - .013
+      - .017
+      - .021
+      - .027
+      - .035
+      - .045
+      - .058
+      - .075
+    V1:
+      - .095
+      - .12
+      - .14
+      - .18
+      - .22
+      - .27
+      - .33
+      - .4
+      - .5
+
+
+# this dict gives us a specific image index for a set of images (whose metamers
+# were already generated using that value, back when I was looking at a broader
+# set of images). Any image names that are found in DEFAULT_METAMERS:image_name
+# but not here will get the lowest image index that's not already in this
+# dictionary
+FIXED_IMAGE_IDX:
+  azulejos_range-.05,.95_size-2048,2600: 0
+  tiles_range-.05,.95_size-2048,2600: 1
+  bike_range-.05,.95_size-2048,2600: 2
+  graffiti_range-.05,.95_size-2048,2600: 3
+  llama_range-.05,.95_size-2048,2600: 4
+  terraces_range-.05,.95_size-2048,2600: 7
+  treetop_symmetric_range-.05,.95_size-2048,2600: 12
+  grooming_symmetric_range-.05,.95_size-2048,2600: 15
+  palm_symmetric_range-.05,.95_size-2048,2600: 17
+  leaves_symmetric_range-.05,.95_size-2048,2600: 23
+  portrait_symmetric_range-.05,.95_size-2048,2600: 24
+  troop_symmetric_range-.05,.95_size-2048,2600: 25
+  quad_symmetric_range-.05,.95_size-2048,2600: 29
+  highway_symmetric_range-.05,.95_size-2048,2600: 35
+  ivy_range-.05,.95_size-2048,2600: 42
+  nyc_range-.05,.95_size-2048,2600: 43
+  rocks_range-.05,.95_size-2048,2600: 46
+  boats_range-.05,.95_size-2048,2600: 49
+  gnarled_range-.05,.95_size-2048,2600: 51
+  lettuce_range-.05,.95_size-2048,2600: 53
+# same as above, but for scaling values
+FIXED_SCALING_IDX:
+  RGC:
+    .01: 0
+    .013: 1
+    .017: 2
+    .021: 3
+    .027: 4
+    .035: 5
+    .045: 6
+    .058: 7
+    .075: 8
+  V1:
+    .063: 9
+    .078: 10
+    .095: 0
+    .12: 1
+    .14: 2
+    .18: 3
+    .22: 4
+    .27: 5
+    .33: 6
+    .4: 7
+    .5: 8
+
+# metamers with scaling below this value will use 0 gpus, metamers with scaling
+# above will use 1
+GPU_SPLIT: .09
+
+DEFAULT_METAMERS:
+  image_name:
+    - 'azulejos_range-.05,.95_size-2048,2600'
+    - 'tiles_range-.05,.95_size-2048,2600'
+    - 'bike_range-.05,.95_size-2048,2600'
+    - 'graffiti_range-.05,.95_size-2048,2600'
+    - 'llama_range-.05,.95_size-2048,2600'
+    - 'terraces_range-.05,.95_size-2048,2600'
+    - 'treetop_symmetric_range-.05,.95_size-2048,2600'
+    - 'grooming_symmetric_range-.05,.95_size-2048,2600'
+    - 'palm_symmetric_range-.05,.95_size-2048,2600'
+    - 'leaves_symmetric_range-.05,.95_size-2048,2600'
+    - 'portrait_symmetric_range-.05,.95_size-2048,2600'
+    - 'troop_symmetric_range-.05,.95_size-2048,2600'
+    - 'quad_symmetric_range-.05,.95_size-2048,2600'
+    - 'highway_symmetric_range-.05,.95_size-2048,2600'
+    - 'ivy_range-.05,.95_size-2048,2600'
+    - 'nyc_range-.05,.95_size-2048,2600'
+    - 'rocks_range-.05,.95_size-2048,2600'
+    - 'boats_range-.05,.95_size-2048,2600'
+    - 'gnarled_range-.05,.95_size-2048,2600'
+    - 'lettuce_range-.05,.95_size-2048,2600'
+  optimizer: 'Adam'
+  loss: 'mse'
+  fract_removed: 0
+  loss_fract: 1
+  loss_change_thresh: 1e-04
+  coarse_to_fine: False
+  clamp: 'clamp'
+  clamp_each_iter: True
+  init_type: 'white'
+  learning_rate: .01
+  min_ecc: 0.5
+  # this is for single monitor (with chin rest) set up at NYU
+  max_ecc: 26.8
+  loss_thresh: 1e-09
+  loss_change_iter: 50
+  max_iter: 15000
+  save_all: ''
+
+RGC:
+  model_name: 'RGC_norm_gaussian'
+  scaling:
+    - .01
+    - .013
+    - .017
+    - .021
+    - .027
+    - .035
+    - .045
+    - .058
+  met_v_met_scaling:
+    - .092
+    - .15
+    - .23
+    - .37
+    - .59
+    - .94
+    - 1.5
+  max_iter: 5000
+
+V1:
+  model_name: 'V1_norm_s6_gaussian'
+  scaling:
+    - .063
+    - .078
+    - .095
+    - .12
+    - .14
+    - .18
+    - .22
+    - .27
+  met_v_met_scaling:
+    - .33
+    - .4
+    - .5
+    - .66
+    - .87
+    - 1.14
+    - 1.5
+  loss: 'mse_range-0,1_beta-0.5'
+  optimizer: 'Adam-SWA_s-50_f-5'
+  coarse_to_fine: 'together'
+  clamp_each_iter: False
+
+PSYCHOPHYSICS:
+  SESSIONS:
+    - 0
+    - 1
+    - 2
+  RUNS:
+    - 0
+    - 1
+    - 2
+    - 3
+    - 4
+  IMAGE_SETS:
+    all:
+      - 'tiles_range-.05,.95_size-2048,2600'
+      - 'llama_range-.05,.95_size-2048,2600'
+      - 'treetop_symmetric_range-.05,.95_size-2048,2600'
+      - 'palm_symmetric_range-.05,.95_size-2048,2600'
+      - 'portrait_symmetric_range-.05,.95_size-2048,2600'
+      - 'quad_symmetric_range-.05,.95_size-2048,2600'
+      - 'highway_symmetric_range-.05,.95_size-2048,2600'
+      - 'ivy_range-.05,.95_size-2048,2600'
+      - 'rocks_range-.05,.95_size-2048,2600'
+      - 'gnarled_range-.05,.95_size-2048,2600'
+    A:
+      - 'azulejos_range-.05,.95_size-2048,2600'
+      - 'terraces_range-.05,.95_size-2048,2600'
+      - 'grooming_symmetric_range-.05,.95_size-2048,2600'
+      - 'leaves_symmetric_range-.05,.95_size-2048,2600'
+      - 'boats_range-.05,.95_size-2048,2600'
+    B:
+      - 'bike_range-.05,.95_size-2048,2600'
+      - 'graffiti_range-.05,.95_size-2048,2600'
+      - 'troop_symmetric_range-.05,.95_size-2048,2600'
+      - 'nyc_range-.05,.95_size-2048,2600'
+      - 'lettuce_range-.05,.95_size-2048,2600'
+  SUBJECTS:
+    - 'sub-00'
+    - 'sub-01'
+    - 'sub-02'
+    - 'sub-03'
+    - 'sub-04'
+    - 'sub-05'
+    - 'sub-06'
+    - 'sub-07'
