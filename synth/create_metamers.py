@@ -5,6 +5,7 @@
 from . import utils
 import re
 import torch
+import torchvision
 import plenoptic as po
 import pyrtools as pt
 import time
@@ -74,7 +75,7 @@ def setup_initial_image(initial_image_type, image):
     return torch.nn.Parameter(initial_image)
 
 
-def setup_image(image):
+def setup_image(image, n_channels=1):
     r"""Set up the image.
 
     We load in the image, if it's not already done so (converting it to
@@ -87,8 +88,10 @@ def setup_image(image):
         Either the path to the file to load in or the loaded-in
         image. If array_like, we assume it's already 2d (i.e.,
         grayscale)
-    device : torch.device
-        The torch device to put the image on
+    n_channels : int, optional
+        How many channels the image should have. Will always be grayscale, but
+        we may duplicate along one of the channels so we can feed this into
+        VGG16
 
     Returns
     -------
@@ -119,7 +122,7 @@ def setup_image(image):
     image = torch.tensor(image, dtype=torch.float32)
     while image.ndimension() < 4:
         image = image.unsqueeze(0)
-    return image
+    return image.repeat(1, n_channels, 1, 1)
 
 
 def setup_model(model_name, image, min_ecc, max_ecc, cache_dir,
@@ -128,9 +131,9 @@ def setup_model(model_name, image, min_ecc, max_ecc, cache_dir,
 
     We initialize the model, with the specified parameters, and return it.
 
-    `model_name` must either a model, 'VGG16', 'PSTexture' or one of our
-    foveated models. If a foveated model, it must be constructed of several
-    parts, for which you have several chocies:
+    `model_name` must either a model, 'VGG16_pool1', 'VGG16_pool2', 'PSTexture'
+    or one of our foveated models. If a foveated model, it must be constructed
+    of several parts, for which you have several chocies:
     `'{visual_area}{options}_{window_type}_scaling-{scaling}'`:
     - `visual_area`: which visual area we're modeling.`'RGC'` (retinal
       ganglion cells, `plenoptic.simul.PooledRGC` class) or
@@ -160,6 +163,17 @@ def setup_model(model_name, image, min_ecc, max_ecc, cache_dir,
     are: `RGC_norm_gaussian_scaling-{scaling}`,
     `V1_norm_s6_gaussian_scaling-{scaling}` (pick whatever scaling value you
     like).
+
+    For the other model_name choices:
+
+    - PSTexture: the Portilla-Simoncelli texture stats with n_scales=4,
+      n_orientations=4, spatial_corr_width=9, use_true_correlations=True
+
+    - VGG16_pool1: pretrained VGG16 from torchvision, through first max pooling
+      layer (first 5 layers)
+
+    - VGG16_pool2: pretrained VGG16 from torchvision, through second max pooling
+      layer (first 10 layers)
 
     Parameters
     ----------
@@ -238,6 +252,19 @@ def setup_model(model_name, image, min_ecc, max_ecc, cache_dir,
                                  num_scales=num_scales,
                                  window_type=window_type,
                                  moments=moments)
+    elif model_name == 'PSTexture':
+        model = po.simul.PortillaSimoncelli(image.shape[-2:], n_scales=4,
+                                            n_orientations=4,
+                                            spatial_corr_width=9,
+                                            use_true_correlations=True)
+    elif 'VGG16' in model_name:
+        model = torchvision.models.vgg16(pretrained=True).eval()
+        # through the first max pooling layer
+        if 'pool1' in model_name:
+            model = torch.nn.Sequential(*list(model.children())[0][:5])
+        # through the second max pooling layer
+        elif 'pool2' in model_name:
+            model = torch.nn.Sequential(*list(model.children())[0][:10])
     else:
         raise Exception("Don't know how to handle model_name %s" % model_name)
     return model
@@ -320,6 +347,12 @@ def save(save_path, metamer):
         The Metamer object after synthesis
 
     """
+    if metamer.model(metamer.synthesized_signal).ndimension() == 4:
+        # these VGG representations have many channels, plotting them all takes
+        # too much time
+        plot_model_response_error = False
+    else:
+        plot_model_response_error = True
     print("Saving at %s" % save_path)
     metamer.save(save_path)
     # save png of mad
@@ -328,15 +361,20 @@ def save(save_path, metamer):
     print("Saving metamer float32 array at %s" % metamer_path.replace('.png', '.npy'))
     np.save(metamer_path.replace('.png', '.npy'), metamer_image)
     print("Saving metamer image at %s" % metamer_path)
-    # this already lies between 0 and 255, so we convert it to ints
-    imageio.imwrite(metamer_path, metamer_image.astype(np.uint8))
+    if metamer_image.ndim == 3:
+        # then this is an RGB, from the VGG16 models, and we want to move the
+        # channels dim to the last dimension
+        metamer_image = metamer_image.transpose(1, 2, 0)
+    imageio.imwrite(metamer_path, utils.convert_im_to_int(metamer_image))
     synthesis_path = op.splitext(save_path)[0] + "_synthesis.png"
     print(f"Saving synthesis image at {synthesis_path}")
-    fig, _ = po.synth.metamer.plot_synthesis_status(metamer)
+    fig, _ = po.synth.metamer.plot_synthesis_status(metamer,
+                                                    model_response_error=plot_model_response_error)
     fig.savefig(synthesis_path)
     video_path = op.splitext(save_path)[0] + "_synthesis.mp4"
     print(f"Saving synthesis video at {video_path}")
-    anim = po.synth.metamer.animate(metamer)
+    anim = po.synth.metamer.animate(metamer,
+                                    model_response_error=plot_model_response_error)
     anim.save(video_path)
 
 
@@ -352,9 +390,9 @@ def main(model_name, image, seed=0, min_ecc=.5, max_ecc=15, learning_rate=1,
     optimization parameters, we do our best to synthesize a metamer,
     saving the outputs after it finishes.
 
-    `model_name` must either a model, 'VGG16', 'PSTexture' or one of our
-    foveated models. If a foveated model, it must be constructed of several
-    parts, for which you have several chocies:
+    `model_name` must either a model, 'VGG16_pool1', 'VGG16_pool2', 'PSTexture'
+    or one of our foveated models. If a foveated model, it must be constructed
+    of several parts, for which you have several chocies:
     `'{visual_area}{options}_{window_type}_scaling-{scaling}'`:
     - `visual_area`: which visual area we're modeling.`'RGC'` (retinal
       ganglion cells, `plenoptic.simul.PooledRGC` class) or
@@ -384,6 +422,17 @@ def main(model_name, image, seed=0, min_ecc=.5, max_ecc=15, learning_rate=1,
     are: `RGC_norm_gaussian_scaling-{scaling}`,
     `V1_norm_s6_gaussian_scaling-{scaling}` (pick whatever scaling value you
     like).
+
+    For the other model_name choices:
+
+    - PSTexture: the Portilla-Simoncelli texture stats with n_scales=4,
+      n_orientations=4, spatial_corr_width=9, use_true_correlations=True
+
+    - VGG16_pool1: pretrained VGG16 from torchvision, through first max pooling
+      layer (first 5 layers)
+
+    - VGG16_pool2: pretrained VGG16 from torchvision, through second max pooling
+      layer (first 10 layers)
 
     If you want to resume synthesis from an earlier run that didn't
     finish, set `continue_path` to the path of the `.pt` file created by
@@ -499,7 +548,7 @@ def main(model_name, image, seed=0, min_ecc=.5, max_ecc=15, learning_rate=1,
         print("Not restricting number of threads, will probably use max "
               f"available ({torch.get_num_threads()})")
     po.tools.set_seed(seed)
-    image = setup_image(image)
+    image = setup_image(image, 3 if 'VGG16' in model_name else 1)
     print(f"Using initial image {initial_image}")
     initial_image = setup_initial_image(initial_image, image)
     # this will be false if normalize_dict is None or an empty list
