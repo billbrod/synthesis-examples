@@ -1,3 +1,7 @@
+# required to fix this strange problem:
+# https://stackoverflow.com/questions/64797838/libgcc-s-so-1-must-be-installed-for-pthread-cancel-to-work
+import ctypes
+libgcc_s = ctypes.CDLL('libgcc_s.so.1')
 import os
 import math
 import re
@@ -5,7 +9,6 @@ import imageio
 import os.path as op
 import numpy as np
 from synth import utils
-
 
 configfile:
     # config is in the same directory as this file
