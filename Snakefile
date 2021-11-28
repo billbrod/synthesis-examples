@@ -174,7 +174,8 @@ rule generate_image:
         import contextlib
         with open(log[0], 'w', buffering=1) as log_file:
             with contextlib.redirect_stdout(log_file), contextlib.redirect_stderr(log_file):
-                synth.utils.create_image(wildcards.image_type, int(wildcards.size), output[0],
+                size = [int(s) for s in wildcards.size.split(',')]
+                synth.utils.create_image(wildcards.image_type, size, output[0],
                                          int(wildcards.period))
 
                 
@@ -547,7 +548,7 @@ rule create_metamers:
                     coarse_to_fine_kwargs = {}
                 else:
                     coarse_to_fine = wildcards.coarse_to_fine
-                    coarse_to_fine_kwargs = {'ctf_iters_to_check': int(ctf_iters)}
+                    coarse_to_fine_kwargs = {'ctf_iters_to_check': int(wildcards.ctf_iters)}
                     try:
                         coarse_to_fine_kwargs['change_scale_criterion'] = float(wildcards.ctf_criterion)
                     except ValueError:
