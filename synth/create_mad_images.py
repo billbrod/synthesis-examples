@@ -198,7 +198,7 @@ def plot_image_diff(mad, fix_model=None, synthesis_model=None):
         synthesis_full, synthesis_half = _get_min_window_ecc(synthesis_model)
     imgs = [mad.reference_signal, mad.synthesized_signal,
             mad.synthesized_signal - mad.reference_signal,
-            mad.reference_signal, mad.synthesized_signal,
+            mad.initial_signal, mad.synthesized_signal,
             mad.synthesized_signal - mad.reference_signal]
     titles = ['Reference image',
               (f'MAD image\n{mad.synthesis_target}imize {mad.synthesis_metric.__name__}'
@@ -261,9 +261,6 @@ def save(save_path, mad, fix_model=None, synthesis_model=None):
       ``os.path.splitext(save_path)[0] + "_mad.npy"``.
     - The finished MAD 8-bit image, at
       ``os.path.splitext(save_path)[0] + "_mad.png"``.
-    - The video showing synthesis progress at
-      ``os.path.splitext(save_path)[0] + "_synthesis.mp4"``. We use this
-      to visualize the optimization progress.
     - Picture showing synthesis progress summary at
       ``os.path.splitext(save_path)[0] + "_synthesis.png"``.
     - Picture showing difference between synthesized image and the reference
@@ -300,10 +297,6 @@ def save(save_path, mad, fix_model=None, synthesis_model=None):
     fig, _ = po.synth.mad_competition.plot_synthesis_status(mad)
     fig.axes[-1].set(yscale='log')
     fig.savefig(synthesis_path)
-    video_path = op.splitext(save_path)[0] + "_synthesis.mp4"
-    print(f"Saving synthesis video at {video_path}")
-    anim = po.synth.mad_competition.animate(mad)
-    anim.save(video_path)
     diff_path = op.splitext(save_path)[0] + "_image-diff.png"
     print(f"Saving image diff figure at {diff_path}")
     fig = plot_image_diff(mad, fix_model, synthesis_model)
@@ -461,14 +454,15 @@ def main(fix_metric_name, synthesis_metric_name, image, synthesis_target,
         synthesis_metric_normalize_dict = torch.load(synthesis_metric_normalize_dict)
     fix_metric, fix_model = setup_metric(fix_metric_name, image, min_ecc,
                                          max_ecc, cache_dir,
-                                         fix_metric_normalize_dict)
+                                         fix_metric_normalize_dict, gpu_id)
     fix_metric_str = f"Using fix metric {fix_metric_name}"
     if fix_metric_name not in ['mse', 'ssim']:
         fix_metric_str += f" from {min_ecc} degrees to {max_ecc} degrees"
     synthesis_metric, synthesis_model = setup_metric(synthesis_metric_name,
                                                      image, min_ecc, max_ecc,
                                                      cache_dir,
-                                                     synthesis_metric_normalize_dict)
+                                                     synthesis_metric_normalize_dict,
+                                                     gpu_id)
     synthesis_metric_str = f"Will {synthesis_target} synthesis metric {synthesis_metric_name}"
     if synthesis_metric_name not in ['mse', 'ssim']:
         synthesis_metric_str += f" from {min_ecc} degrees to {max_ecc} degrees"

@@ -1,0 +1,34 @@
+{
+    "__default__":
+    {
+        "nodes": 1,
+        "tasks_per_node": 1,
+        "mem": "10GB",
+        "time": "1:00:00",
+        "job_name": "{rule}.{wildcards}",
+        "cpus_per_task": 1,
+        "output": "{log}-%j",
+        "error": "{log}-%j",
+	    "partition": "genx"
+    },
+    "create_metamers":
+    {
+        "gres": "gpu:{resources.gpu}",
+        "partition": "{params.rusty_partition}",
+        "mem": "{params.rusty_mem}",
+        "constraint": "{params.rusty_constraint}",
+        "time": "{params.time}"
+    },
+    "create_mad_images":
+    {
+        "gres": "gpu:{resources.gpu}",
+        "partition": "{params.rusty_partition}",
+        "mem": "{params.rusty_mem}",
+        "constraint": "{params.rusty_constraint}",
+        "time": "{params.time}"
+    },
+    "cache_windows":
+    {
+        "mem": "{resources.mem}GB"
+    }
+}

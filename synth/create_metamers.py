@@ -213,11 +213,11 @@ def setup_model(model_name, image, min_ecc, max_ecc, cache_dir,
         t_width = 1
         std_dev = None
     if model_name.startswith('RGC') or model_name.startswith('V1'):
-        model_name, scaling = re.findall('([a-zA-z_]+)_scaling-([0-9.]+)', model_name)[0]
+        model_name, scaling = re.findall('([a-zA-z_0-9]+)_scaling-([0-9.]+)', model_name)[0]
         scaling = float(scaling)
         if 'norm' not in model_name:
             if normalize_dict:
-                raise Exception("Cannot normalize RGC model (must be RGC_norm)!")
+                raise Exception(f"Cannot normalize model {model_name} (norm must be part of model_name to do so)!")
             normalize_dict = {}
         if not normalize_dict and 'norm' in model_name:
             raise Exception(f"If model_name is {model_name}, normalize_dict must be set!")

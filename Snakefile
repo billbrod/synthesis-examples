@@ -602,7 +602,6 @@ rule create_mad_images:
         init_image = get_init_image,
     output:
         MAD_TEMPLATE_PATH.replace('_mad.png', '.pt'),
-        MAD_TEMPLATE_PATH.replace('mad.png', 'synthesis.mp4'),
         MAD_TEMPLATE_PATH.replace('mad.png', 'synthesis.png'),
         MAD_TEMPLATE_PATH.replace('mad.png', 'image-diff.png'),
         MAD_TEMPLATE_PATH.replace('.png', '.npy'),
