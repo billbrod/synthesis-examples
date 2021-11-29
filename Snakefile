@@ -674,23 +674,28 @@ rule create_mad_images:
 
 def get_metamers(wildcards):
     template_path = op.join(config['DATA_DIR'], 'metamers', '{model}', '{image}', 'opt-Adam_loss-{loss}_penalty-{penalty}',
-                            'stop-iters-50_ctf-{ctf}_ctf-crit-None_ctf-iters-{ctf_iters}',
-                            'seed-0_init-white_lr-{lr}_e0-0.500_em-3.000_iter-5000_stop-crit-1e-09_gpu-1_metamer.png')
+                            'stop-iters-50_ctf-{ctf}_ctf-crit-{ctf_crit}_ctf-iters-{ctf_iters}',
+                            'seed-0_init-white_lr-{lr}_e0-0.500_em-3.000_iter-{max_iter}_stop-crit-1e-09_gpu-1_metamer.png')
     images = ['einstein_size-256,256', 'reptil_skin_size-256,256', 'checkerboard_period-64_range-.1,.9_size-256,256']
-    models = [f'RGC_norm_gaussian_scaling-{wildcards.scaling}', 'PSTexture', f'VGG16_pool{wildcards.poolN}']
+    models = [f'RGC_norm_gaussian_scaling-{wildcards.RGC_scaling}', 'PSTexture', f'VGG16_pool{wildcards.poolN}',
+              f'V1_norm_s4_gaussian_scaling-{wildcards.V1_scaling}']
     metamers = []
     for model in models:
-        default_penalty = {'RGC': 1.5, 'VGG16': '1e3', 'PSTexture': '0.5'}[model.split('_')[0]]
+        default_penalty = {'RGC': 1.5, 'V1': 1.5, 'VGG16': '1e3', 'PSTexture': '0.5'}[model.split('_')[0]]
         lr = .005 if model.startswith("VGG16") else .01
-        ctf = 'together' if model.startswith("PSTexture") else False
-        ctf_iters = 15 if model.startswith("PSTexture") else None
+        ctf = {'V1': 'together', 'PSTexture': 'together'}.get(model.split('_')[0], False)
+        ctf_iters = {'V1': 50, 'PSTexture': 15}.get(model.split('_')[0], None)
+        ctf_crit = '1e-4' if model.startswith("V1") else None
+        max_iter = 15000 if model.startswith("V1") else 5000
         loss = 'l2' if model.startswith("PSTexture") else 'mse'
         for im in images:
             penalty = RANGE_PENALTIES.get((model, im), default_penalty)
             metamers.append(template_path.format(model=model, image=im,
                                                  penalty=penalty, ctf=ctf,
                                                  ctf_iters=ctf_iters,
-                                                 loss=loss, lr=lr))
+                                                 ctf_crit=ctf_crit,
+                                                 loss=loss, lr=lr,
+                                                 max_iter=max_iter))
     return metamers
 
 
@@ -701,11 +706,11 @@ rule example_metamer_figure:
                          op.join(config['DATA_DIR'], 'ref_images_preproc', 'checkerboard_period-64_range-.1,.9_size-256,256.png')],
         metamers = get_metamers,
     output:
-        op.join(config['DATA_DIR'], 'figures', '{context}', 'example_metamers_scaling-{scaling}_VGG16-pool{poolN}.svg'),
+        op.join(config['DATA_DIR'], 'figures', '{context}', 'example_metamers_RGC-{RGC_scaling}_VGG16-pool{poolN}_V1-{V1_scaling}.svg'),
     log:
-        op.join(config['DATA_DIR'], 'logs', 'figures', '{context}', 'example_metamers_scaling-{scaling}_VGG16-pool{poolN}.log'),
+        op.join(config['DATA_DIR'], 'logs', 'figures', '{context}', 'example_metamers_RGC-{RGC_scaling}_VGG16-pool{poolN}_V1-{V1_scaling}.log'),
     benchmark:
-        op.join(config['DATA_DIR'], 'logs', 'figures', '{context}', 'example_metamers_scaling-{scaling}_VGG16-pool{poolN}_benchmark.txt'),
+        op.join(config['DATA_DIR'], 'logs', 'figures', '{context}', 'example_metamers_RGC-{RGC_scaling}_VGG16-pool{poolN}_V1-{V1_scaling}_benchmark.txt'),
     run:
         import synth
         import contextlib
@@ -727,7 +732,8 @@ rule example_metamer_figure:
                     imgs.append(img)
                 imgs = torch.cat(imgs)
                 n_imgs = len(input.target_images)
-                models = {f'foveated_luminance({wildcards.scaling})': imgs[n_imgs:2*n_imgs],
+                models = {f'foveated_luminance({wildcards.RGC_scaling})': imgs[n_imgs:2*n_imgs],
+                          f'foveated_energy({wildcards.V1_scaling})': imgs[4*n_imgs:5*n_imgs],
                           'PS_texture': imgs[2*n_imgs:3*n_imgs],
                           f'VGG16_pool{wildcards.poolN}': imgs[3*n_imgs:4*n_imgs]}
                 fig = synth.figures.example_metamer_figure(imgs[:n_imgs], **models)
