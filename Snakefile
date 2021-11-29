@@ -515,7 +515,6 @@ rule create_metamers:
         init_image = get_init_image,
     output:
         METAMER_TEMPLATE_PATH.replace('_metamer.png', '.pt'),
-        METAMER_TEMPLATE_PATH.replace('metamer.png', 'synthesis.mp4'),
         METAMER_TEMPLATE_PATH.replace('metamer.png', 'synthesis.png'),
         METAMER_TEMPLATE_PATH.replace('.png', '.npy'),
         report(METAMER_TEMPLATE_PATH),

@@ -332,9 +332,6 @@ def save(save_path, metamer):
       ``os.path.splitext(save_path)[0] + "_metamer.npy"``.
     - The finished metamer 8-bit image, at
       ``os.path.splitext(save_path)[0] + "_metamer.png"``.
-    - The video showing synthesis progress at
-      ``os.path.splitext(save_path)[0] + "_synthesis.mp4"``. We use this
-      to visualize the optimization progress.
     - Picture showing synthesis progress summary at
       ``os.path.splitext(save_path)[0] + "_synthesis.png"``.
 
@@ -371,11 +368,6 @@ def save(save_path, metamer):
     fig, _ = po.synth.metamer.plot_synthesis_status(metamer,
                                                     model_response_error=plot_model_response_error)
     fig.savefig(synthesis_path)
-    video_path = op.splitext(save_path)[0] + "_synthesis.mp4"
-    print(f"Saving synthesis video at {video_path}")
-    anim = po.synth.metamer.animate(metamer,
-                                    model_response_error=plot_model_response_error)
-    anim.save(video_path)
 
 
 def main(model_name, image, seed=0, min_ecc=.5, max_ecc=15, learning_rate=1,
