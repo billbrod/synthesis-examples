@@ -38,6 +38,15 @@ wildcard_constraints:
 ruleorder:
     preproc_image > crop_image > generate_image
 
+# these are strings so we can control exactly how they're formatted in the path
+RANGE_PENALTIES = {
+    ('RGC_norm_gaussian_scaling-0.06', 'reptil_skin_size-256,256'): '10',
+    ('VGG16_pool4', 'einstein_size-256,256'): '1e4',
+    ('VGG16_pool3', 'reptil_skin_size-256,256'): '1e4',
+    ('VGG16_pool3', 'checkerboard_period-64_range-.1,.9_size-256,256'): '1e5',
+    ('PSTexture', 'checkerboard_period-64_range-.1,.9_size-256,256'): '1e4',
+}
+
 # this is ugly, but it's easiest way to just replace the one format
 # target while leaving the others alone
 DATA_DIR = config['DATA_DIR']
@@ -664,29 +673,40 @@ rule create_mad_images:
                                                  num_threads=resources.num_threads)
 
 
+def get_metamers(wildcards):
+    template_path = op.join(config['DATA_DIR'], 'metamers', '{model}', '{image}', 'opt-Adam_loss-{loss}_penalty-{penalty}',
+                            'stop-iters-50_ctf-{ctf}_ctf-crit-None_ctf-iters-{ctf_iters}',
+                            'seed-0_init-white_lr-{lr}_e0-0.500_em-3.000_iter-5000_stop-crit-1e-09_gpu-1_metamer.png')
+    images = ['einstein_size-256,256', 'reptil_skin_size-256,256', 'checkerboard_period-64_range-.1,.9_size-256,256']
+    models = [f'RGC_norm_gaussian_scaling-{wildcards.scaling}', 'PSTexture', f'VGG16_pool{wildcards.poolN}']
+    metamers = []
+    for model in models:
+        default_penalty = {'RGC': 1.5, 'VGG16': '1e3', 'PSTexture': '0.5'}[model.split('_')[0]]
+        lr = .005 if model.startswith("VGG16") else .01
+        ctf = 'together' if model.startswith("PSTexture") else False
+        ctf_iters = 15 if model.startswith("PSTexture") else None
+        loss = 'l2' if model.startswith("PSTexture") else 'mse'
+        for im in images:
+            penalty = RANGE_PENALTIES.get((model, im), default_penalty)
+            metamers.append(template_path.format(model=model, image=im,
+                                                 penalty=penalty, ctf=ctf,
+                                                 ctf_iters=ctf_iters,
+                                                 loss=loss, lr=lr))
+    return metamers
+
+
 rule example_metamer_figure:
     input:
         target_images = [op.join(config['DATA_DIR'], 'ref_images', 'einstein_size-256,256.png'),
                          op.join(config['DATA_DIR'], 'ref_images', 'reptil_skin_size-256,256.png'),
                          op.join(config['DATA_DIR'], 'ref_images_preproc', 'checkerboard_period-64_range-.1,.9_size-256,256.png')],
-        metamers = [
-            op.join(config['DATA_DIR'], 'metamers', 'RGC_norm_gaussian_scaling-{scaling}', 'einstein_size-256,256', 'opt-Adam_loss-mse_penalty-1.5', 'stop-iters-50_ctf-False_ctf-crit-None_ctf-iters-None', 'seed-0_init-white_lr-0.01_e0-0.500_em-3.000_iter-5000_stop-crit-1e-09_gpu-1_metamer.png'),
-            op.join(config['DATA_DIR'], 'metamers', 'RGC_norm_gaussian_scaling-{scaling}', 'reptil_skin_size-256,256', 'opt-Adam_loss-mse_penalty-1.5', 'stop-iters-50_ctf-False_ctf-crit-None_ctf-iters-None', 'seed-0_init-white_lr-0.01_e0-0.500_em-3.000_iter-5000_stop-crit-1e-09_gpu-1_metamer.png'),
-            # scaling-0.06, reptil_skin has a different penalty
-            op.join(config['DATA_DIR'], 'metamers', 'RGC_norm_gaussian_scaling-{scaling}', 'checkerboard_period-64_range-.1,.9_size-256,256', 'opt-Adam_loss-mse_penalty-1.5', 'stop-iters-50_ctf-False_ctf-crit-None_ctf-iters-None', 'seed-0_init-white_lr-0.01_e0-0.500_em-3.000_iter-5000_stop-crit-1e-09_gpu-1_metamer.png'),
-            op.join(config['DATA_DIR'], 'metamers', 'PSTexture', 'einstein_size-256,256', 'opt-Adam_loss-l2_penalty-0.5', 'stop-iters-50_ctf-together_ctf-crit-None_ctf-iters-15', 'seed-0_init-white_lr-0.01_e0-0.500_em-3.000_iter-5000_stop-crit-1e-09_gpu-1_metamer.png'),
-            op.join(config['DATA_DIR'], 'metamers', 'PSTexture', 'reptil_skin_size-256,256', 'opt-Adam_loss-l2_penalty-0.5', 'stop-iters-50_ctf-together_ctf-crit-None_ctf-iters-15', 'seed-0_init-white_lr-0.01_e0-0.500_em-3.000_iter-5000_stop-crit-1e-09_gpu-1_metamer.png'),
-            op.join(config['DATA_DIR'], 'metamers', 'PSTexture', 'checkerboard_period-64_range-.1,.9_size-256,256', 'opt-Adam_loss-l2_penalty-1e4', 'stop-iters-50_ctf-together_ctf-crit-None_ctf-iters-15', 'seed-0_init-white_lr-0.01_e0-0.500_em-3.000_iter-5000_stop-crit-1e-09_gpu-1_metamer.png'),
-            op.join(config['DATA_DIR'], 'metamers', 'VGG16_pool2', 'einstein_size-256,256', 'opt-Adam_loss-mse_penalty-1e3', 'stop-iters-50_ctf-False_ctf-crit-None_ctf-iters-None', 'seed-0_init-white_lr-0.005_e0-0.500_em-3.000_iter-5000_stop-crit-1e-09_gpu-1_metamer.png'),
-            op.join(config['DATA_DIR'], 'metamers', 'VGG16_pool2', 'reptil_skin_size-256,256', 'opt-Adam_loss-mse_penalty-1e3', 'stop-iters-50_ctf-False_ctf-crit-None_ctf-iters-None', 'seed-0_init-white_lr-0.005_e0-0.500_em-3.000_iter-5000_stop-crit-1e-09_gpu-1_metamer.png'),
-            op.join(config['DATA_DIR'], 'metamers', 'VGG16_pool2', 'checkerboard_period-64_range-.1,.9_size-256,256', 'opt-Adam_loss-mse_penalty-1e3', 'stop-iters-50_ctf-False_ctf-crit-None_ctf-iters-None', 'seed-0_init-white_lr-0.005_e0-0.500_em-3.000_iter-5000_stop-crit-1e-09_gpu-1_metamer.png'),
-        ]
+        metamers = get_metamers,
     output:
-        op.join(config['DATA_DIR'], 'figures', '{context}', 'example_metamers_scaling-{scaling}.svg'),
+        op.join(config['DATA_DIR'], 'figures', '{context}', 'example_metamers_scaling-{scaling}_VGG16-pool{poolN}.svg'),
     log:
-        op.join(config['DATA_DIR'], 'logs', 'figures', '{context}', 'example_metamers_scaling-{scaling}.log'),
+        op.join(config['DATA_DIR'], 'logs', 'figures', '{context}', 'example_metamers_scaling-{scaling}_VGG16-pool{poolN}.log'),
     benchmark:
-        op.join(config['DATA_DIR'], 'logs', 'figures', '{context}', 'example_metamers_scaling-{scaling}_benchmark.txt'),
+        op.join(config['DATA_DIR'], 'logs', 'figures', '{context}', 'example_metamers_scaling-{scaling}_VGG16-pool{poolN}_benchmark.txt'),
     run:
         import synth
         import contextlib
@@ -708,8 +728,8 @@ rule example_metamer_figure:
                     imgs.append(img)
                 imgs = torch.cat(imgs)
                 n_imgs = len(input.target_images)
-                fig = synth.figures.example_metamer_figure(imgs[:n_imgs],
-                                                           foveated_luminance=imgs[n_imgs:2*n_imgs],
-                                                           PS_texture=imgs[2*n_imgs:3*n_imgs],
-                                                           VGG16_pool2=imgs[3*n_imgs:4*n_imgs])
+                models = {f'foveated_luminance({wildcards.scaling})': imgs[n_imgs:2*n_imgs],
+                          'PS_texture': imgs[2*n_imgs:3*n_imgs],
+                          f'VGG16_pool{wildcards.poolN}': imgs[3*n_imgs:4*n_imgs]}
+                fig = synth.figures.example_metamer_figure(imgs[:n_imgs], **models)
                 fig.savefig(output[0], bbox_inches='tight')
