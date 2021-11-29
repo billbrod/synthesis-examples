@@ -131,9 +131,10 @@ def setup_model(model_name, image, min_ecc, max_ecc, cache_dir,
 
     We initialize the model, with the specified parameters, and return it.
 
-    `model_name` must either a model, 'VGG16_pool1', 'VGG16_pool2', 'PSTexture'
-    or one of our foveated models. If a foveated model, it must be constructed
-    of several parts, for which you have several chocies:
+    `model_name` must either a model, 'VGG16_poolN' (where N is an int between
+    1 and 5), 'PSTexture' or one of our foveated models. If a foveated model,
+    it must be constructed of several parts, for which you have several
+    chocies:
     `'{visual_area}{options}_{window_type}_scaling-{scaling}'`:
     - `visual_area`: which visual area we're modeling.`'RGC'` (retinal
       ganglion cells, `plenoptic.simul.PooledRGC` class) or
@@ -169,11 +170,8 @@ def setup_model(model_name, image, min_ecc, max_ecc, cache_dir,
     - PSTexture: the Portilla-Simoncelli texture stats with n_scales=4,
       n_orientations=4, spatial_corr_width=9, use_true_correlations=True
 
-    - VGG16_pool1: pretrained VGG16 from torchvision, through first max pooling
-      layer (first 5 layers)
-
-    - VGG16_pool2: pretrained VGG16 from torchvision, through second max pooling
-      layer (first 10 layers)
+    - VGG16_poolN: pretrained VGG16 from torchvision, through Nth max pooling
+      layer (where N is an int from 1 to 5)
 
     Parameters
     ----------
@@ -265,6 +263,15 @@ def setup_model(model_name, image, min_ecc, max_ecc, cache_dir,
         # through the second max pooling layer
         elif 'pool2' in model_name:
             model = torch.nn.Sequential(*list(model.children())[0][:10])
+        # etc
+        elif 'pool3' in model_name:
+            model = torch.nn.Sequential(*list(model.children())[0][:17])
+        elif 'pool4' in model_name:
+            model = torch.nn.Sequential(*list(model.children())[0][:24])
+        elif 'pool5' in model_name:
+            model = torch.nn.Sequential(*list(model.children())[0][:31])
+        else:
+            raise Exception(f"Don't know what to do with model_name {model_name}!")
     else:
         raise Exception("Don't know how to handle model_name %s" % model_name)
     return model
@@ -382,9 +389,10 @@ def main(model_name, image, seed=0, min_ecc=.5, max_ecc=15, learning_rate=1,
     optimization parameters, we do our best to synthesize a metamer,
     saving the outputs after it finishes.
 
-    `model_name` must either a model, 'VGG16_pool1', 'VGG16_pool2', 'PSTexture'
-    or one of our foveated models. If a foveated model, it must be constructed
-    of several parts, for which you have several chocies:
+    `model_name` must either a model, 'VGG16_poolN' (where N is an int between
+    1 and 5), 'PSTexture' or one of our foveated models. If a foveated model,
+    it must be constructed of several parts, for which you have several
+    chocies:
     `'{visual_area}{options}_{window_type}_scaling-{scaling}'`:
     - `visual_area`: which visual area we're modeling.`'RGC'` (retinal
       ganglion cells, `plenoptic.simul.PooledRGC` class) or
@@ -420,11 +428,8 @@ def main(model_name, image, seed=0, min_ecc=.5, max_ecc=15, learning_rate=1,
     - PSTexture: the Portilla-Simoncelli texture stats with n_scales=4,
       n_orientations=4, spatial_corr_width=9, use_true_correlations=True
 
-    - VGG16_pool1: pretrained VGG16 from torchvision, through first max pooling
-      layer (first 5 layers)
-
-    - VGG16_pool2: pretrained VGG16 from torchvision, through second max pooling
-      layer (first 10 layers)
+    - VGG16_poolN: pretrained VGG16 from torchvision, through Nth max pooling
+      layer (where N is an int from 1 to 5)
 
     If you want to resume synthesis from an earlier run that didn't
     finish, set `continue_path` to the path of the `.pt` file created by
