@@ -732,8 +732,8 @@ rule example_metamer_figure:
                     imgs.append(img)
                 imgs = torch.cat(imgs)
                 n_imgs = len(input.target_images)
-                models = {f'foveated_luminance({wildcards.RGC_scaling})': imgs[n_imgs:2*n_imgs],
-                          f'foveated_energy({wildcards.V1_scaling})': imgs[4*n_imgs:5*n_imgs],
+                models = {f'fov_lum({wildcards.RGC_scaling})': imgs[n_imgs:2*n_imgs],
+                          f'fov_energy({wildcards.V1_scaling})': imgs[4*n_imgs:5*n_imgs],
                           'PS_texture': imgs[2*n_imgs:3*n_imgs],
                           f'VGG16_pool{wildcards.poolN}': imgs[3*n_imgs:4*n_imgs]}
                 fig = synth.figures.example_metamer_figure(imgs[:n_imgs], **models)
