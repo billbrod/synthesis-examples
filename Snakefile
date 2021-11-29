@@ -662,3 +662,54 @@ rule create_mad_images:
                                                  tradeoff_lambda,
                                                  float(wildcards.range_lambda),
                                                  num_threads=resources.num_threads)
+
+
+rule example_metamer_figure:
+    input:
+        target_images = [op.join(config['DATA_DIR'], 'ref_images', 'einstein_size-256,256.png'),
+                         op.join(config['DATA_DIR'], 'ref_images', 'reptil_skin_size-256,256.png'),
+                         op.join(config['DATA_DIR'], 'ref_images_preproc', 'checkerboard_period-64_range-.1,.9_size-256,256.png')],
+        metamers = [
+            op.join(config['DATA_DIR'], 'metamers', 'RGC_norm_gaussian_scaling-{scaling}', 'einstein_size-256,256', 'opt-Adam_loss-mse_penalty-1.5', 'stop-iters-50_ctf-False_ctf-crit-None_ctf-iters-None', 'seed-0_init-white_lr-0.01_e0-0.500_em-3.000_iter-5000_stop-crit-1e-09_gpu-1_metamer.png'),
+            op.join(config['DATA_DIR'], 'metamers', 'RGC_norm_gaussian_scaling-{scaling}', 'reptil_skin_size-256,256', 'opt-Adam_loss-mse_penalty-1.5', 'stop-iters-50_ctf-False_ctf-crit-None_ctf-iters-None', 'seed-0_init-white_lr-0.01_e0-0.500_em-3.000_iter-5000_stop-crit-1e-09_gpu-1_metamer.png'),
+            # scaling-0.06, reptil_skin has a different penalty
+            op.join(config['DATA_DIR'], 'metamers', 'RGC_norm_gaussian_scaling-{scaling}', 'checkerboard_period-64_range-.1,.9_size-256,256', 'opt-Adam_loss-mse_penalty-1.5', 'stop-iters-50_ctf-False_ctf-crit-None_ctf-iters-None', 'seed-0_init-white_lr-0.01_e0-0.500_em-3.000_iter-5000_stop-crit-1e-09_gpu-1_metamer.png'),
+            op.join(config['DATA_DIR'], 'metamers', 'PSTexture', 'einstein_size-256,256', 'opt-Adam_loss-l2_penalty-0.5', 'stop-iters-50_ctf-together_ctf-crit-None_ctf-iters-15', 'seed-0_init-white_lr-0.01_e0-0.500_em-3.000_iter-5000_stop-crit-1e-09_gpu-1_metamer.png'),
+            op.join(config['DATA_DIR'], 'metamers', 'PSTexture', 'reptil_skin_size-256,256', 'opt-Adam_loss-l2_penalty-0.5', 'stop-iters-50_ctf-together_ctf-crit-None_ctf-iters-15', 'seed-0_init-white_lr-0.01_e0-0.500_em-3.000_iter-5000_stop-crit-1e-09_gpu-1_metamer.png'),
+            op.join(config['DATA_DIR'], 'metamers', 'PSTexture', 'checkerboard_period-64_range-.1,.9_size-256,256', 'opt-Adam_loss-l2_penalty-1e4', 'stop-iters-50_ctf-together_ctf-crit-None_ctf-iters-15', 'seed-0_init-white_lr-0.01_e0-0.500_em-3.000_iter-5000_stop-crit-1e-09_gpu-1_metamer.png'),
+            op.join(config['DATA_DIR'], 'metamers', 'VGG16_pool2', 'einstein_size-256,256', 'opt-Adam_loss-mse_penalty-1e3', 'stop-iters-50_ctf-False_ctf-crit-None_ctf-iters-None', 'seed-0_init-white_lr-0.005_e0-0.500_em-3.000_iter-5000_stop-crit-1e-09_gpu-1_metamer.png'),
+            op.join(config['DATA_DIR'], 'metamers', 'VGG16_pool2', 'reptil_skin_size-256,256', 'opt-Adam_loss-mse_penalty-1e3', 'stop-iters-50_ctf-False_ctf-crit-None_ctf-iters-None', 'seed-0_init-white_lr-0.005_e0-0.500_em-3.000_iter-5000_stop-crit-1e-09_gpu-1_metamer.png'),
+            op.join(config['DATA_DIR'], 'metamers', 'VGG16_pool2', 'checkerboard_period-64_range-.1,.9_size-256,256', 'opt-Adam_loss-mse_penalty-1e3', 'stop-iters-50_ctf-False_ctf-crit-None_ctf-iters-None', 'seed-0_init-white_lr-0.005_e0-0.500_em-3.000_iter-5000_stop-crit-1e-09_gpu-1_metamer.png'),
+        ]
+    output:
+        op.join(config['DATA_DIR'], 'figures', '{context}', 'example_metamers_scaling-{scaling}.svg'),
+    log:
+        op.join(config['DATA_DIR'], 'logs', 'figures', '{context}', 'example_metamers_scaling-{scaling}.log'),
+    benchmark:
+        op.join(config['DATA_DIR'], 'logs', 'figures', '{context}', 'example_metamers_scaling-{scaling}_benchmark.txt'),
+    run:
+        import synth
+        import contextlib
+        import matplotlib.pyplot as plt
+        import torch
+        import plenoptic as po
+        with open(log[0], 'w', buffering=1) as log_file:
+            with contextlib.redirect_stdout(log_file), contextlib.redirect_stderr(log_file):
+                style, _ = synth.style.plotting_style(wildcards.context)
+                plt.style.use(style)
+                # need to load these in separately because some are RGB, some
+                # grayscale, and we need to turn them all into 3-channel images
+                # for plotting
+                imgs = []
+                for img in input:
+                    img = po.load_images(img, as_gray=False)
+                    if img.shape[1] == 1:
+                        img = img.repeat(1, 3, 1, 1)
+                    imgs.append(img)
+                imgs = torch.cat(imgs)
+                n_imgs = len(input.target_images)
+                fig = synth.figures.example_metamer_figure(imgs[:n_imgs],
+                                                           foveated_luminance=imgs[n_imgs:2*n_imgs],
+                                                           PS_texture=imgs[2*n_imgs:3*n_imgs],
+                                                           VGG16_pool2=imgs[3*n_imgs:4*n_imgs])
+                fig.savefig(output[0], bbox_inches='tight')
