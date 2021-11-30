@@ -9,6 +9,7 @@ import imageio
 import os.path as op
 import numpy as np
 from synth import utils
+import itertools
 
 configfile:
     # config is in the same directory as this file
@@ -41,12 +42,26 @@ ruleorder:
     preproc_image > crop_image > generate_image
 
 # these are strings so we can control exactly how they're formatted in the path
-RANGE_PENALTIES = {
+METAMER_RANGE_PENALTIES = {
     ('RGC_norm_gaussian_scaling-0.06', 'reptil_skin_size-256,256'): '10',
     ('VGG16_pool4', 'einstein_size-256,256'): '1e4',
     ('VGG16_pool3', 'reptil_skin_size-256,256'): '1e4',
     ('VGG16_pool3', 'checkerboard_period-64_range-.1,.9_size-256,256'): '1e5',
     ('PSTexture', 'checkerboard_period-64_range-.1,.9_size-256,256'): '1e4',
+}
+
+MAD_RANGE_PENALTIES = {
+    ('1-mse_2-RGC_norm_gaussian_scaling-0.1', 'fix-1_synth-2_max'): '1e3',
+    ('1-mse_2-RGC_norm_gaussian_scaling-0.1', 'fix-1_synth-2_min'): '1e2',
+    ('1-mse_2-RGC_norm_gaussian_scaling-0.1', 'fix-2_synth-1_max'): '1e3',
+    ('1-mse_2-RGC_norm_gaussian_scaling-0.1', 'fix-2_synth-1_min'): '10',
+}
+
+MAD_TRADEOFF = {
+    ('1-mse_2-RGC_norm_gaussian_scaling-0.1', 'fix-1_synth-2_max'): '1e4',
+    ('1-mse_2-RGC_norm_gaussian_scaling-0.1', 'fix-1_synth-2_min'): None,
+    ('1-mse_2-RGC_norm_gaussian_scaling-0.1', 'fix-2_synth-1_max'): '10',
+    ('1-mse_2-RGC_norm_gaussian_scaling-0.1', 'fix-2_synth-1_min'): None,
 }
 
 # this is ugly, but it's easiest way to just replace the one format
@@ -699,7 +714,7 @@ def get_metamers(wildcards):
         max_iter = 15000 if model.startswith("V1") else 5000
         loss = 'l2' if model.startswith("PSTexture") else 'mse'
         for im in images:
-            penalty = RANGE_PENALTIES.get((model, im), default_penalty)
+            penalty = METAMER_RANGE_PENALTIES.get((model, im), default_penalty)
             metamers.append(template_path.format(model=model, image=im,
                                                  penalty=penalty, ctf=ctf,
                                                  ctf_iters=ctf_iters,
@@ -748,3 +763,68 @@ rule example_metamer_figure:
                           f'VGG16_pool{wildcards.poolN}': imgs[3*n_imgs:4*n_imgs]}
                 fig = synth.figures.example_metamer_figure(imgs[:n_imgs], **models)
                 fig.savefig(output[0], bbox_inches='tight')
+
+
+def get_ref_image(wildcards):
+    base_path = op.join(config['DATA_DIR'], 'ref_images')
+    if 'range' in wildcards.image_name:
+        base_path = op.join(config['DATA_DIR'], 'ref_images_preproc')
+    return op.join(base_path, wildcards.image_name + '.png')
+
+
+def get_mad_images(wildcards):
+    template_path = op.join(config['DATA_DIR'], 'mad_images', '1-{model_name_1}_2-{model_name_2}',
+                            '{image_name}', 'fix-{fix}_synth-{synth}_{target}', 'opt-Adam_tradeoff-{tradeoff}_penalty-{penalty}_stop-iters-50',
+                            'seed-0_init-{init_type}_lr-0.01_e0-0.500_em-3.0000_iter-{max_iter}_stop-crit-1e-09_gpu-1_mad.png')
+    order = list(itertools.product([(1, 2), (2, 1)], ['min', 'max']))
+    max_iter = 60000
+    mads = []
+    for (synth, fix), target in order:
+        tradeoff = MAD_TRADEOFF.get((f'1-{wildcards.model_name_1}_2-{wildcards.model_name_2}',
+                                     f'fix-{fix}_synth-{synth}_{target}'), None)
+        penalty = MAD_RANGE_PENALTIES.get((f'1-{wildcards.model_name_1}_2-{wildcards.model_name_2}',
+                                           f'fix-{fix}_synth-{synth}_{target}'), '1e3')
+        mads.append(template_path.format(fix=fix, synth=synth, target=target, max_iter=max_iter,
+                                         tradeoff=tradeoff, penalty=penalty, **wildcards))
+    return mads
+
+
+
+rule example_mad_figure:
+    input:
+        get_ref_image,
+        get_mad_images,
+    output:
+        op.join(config['DATA_DIR'], 'figures', '{context}', 'example_mad_1-{model_name_1}_2-{model_name_2}_img-{image_name}_init-{init_type}.svg'),
+    log:
+        op.join(config['DATA_DIR'], 'logs', 'figures', '{context}', 'example_mad_1-{model_name_1}_2-{model_name_2}_img-{image_name}_init-{init_type}.log'),
+    benchmark:
+        op.join(config['DATA_DIR'], 'logs', 'figures', '{context}', 'example_mad_1-{model_name_1}_2-{model_name_2}_img-{image_name}_init-{init_type}_benchmark.txt'),
+    run:
+        import synth
+        import contextlib
+        import matplotlib.pyplot as plt
+        import torch
+        import plenoptic as po
+        with open(log[0], 'w', buffering=1) as log_file:
+            with contextlib.redirect_stdout(log_file), contextlib.redirect_stderr(log_file):
+                style, _ = synth.style.plotting_style(wildcards.context)
+                plt.style.use(style)
+                # need to load these in separately because some may be RGB, some
+                # grayscale, and we need to turn them all into 3-channel images
+                # for plotting
+                imgs = []
+                as_gray = False if ('VGG' in wildcards.model_name_1 or 'VGG' in wildcards.model_name_2) else True
+                for img in input:
+                    img = po.load_images(img, as_gray=as_gray)
+                    if as_gray and img.shape[1] == 1:
+                        img = img.repeat(1, 3, 1, 1)
+                    imgs.append(img)
+                imgs = 255 * torch.cat(imgs)
+                model_name_1 = synth.figures.remap_model_name(wildcards.model_name_1)
+                model_name_2 = synth.figures.remap_model_name(wildcards.model_name_2)
+                fig = synth.figures.example_mad_figure(*imgs.unsqueeze(1),
+                                                       model_name_1, model_name_2,
+                                                       vrange=(0, 255),
+                                                       noise_level=float(wildcards.init_type))
+                fig.savefig(output[0], bbox_inches='tight', dpi=fig.dpi)
