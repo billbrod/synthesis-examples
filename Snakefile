@@ -34,7 +34,9 @@ wildcard_constraints:
     gpu="0|1",
     gammacorrected='|_gamma-corrected',
     context="paper|poster",
-    synth_target="min|max"
+    synth_target="min|max",
+    fix_model_num="1|2",
+    synth_model_num="1|2",
 ruleorder:
     preproc_image > crop_image > generate_image
 
@@ -58,7 +60,7 @@ REF_IMAGE_TEMPLATE_PATH = config['REF_IMAGE_TEMPLATE_PATH'].replace("{DATA_DIR}/
 METAMER_TEMPLATE_PATH = re.sub(":.*?}", "}", config['METAMER_TEMPLATE_PATH'].replace("{DATA_DIR}/", DATA_DIR))
 MAD_TEMPLATE_PATH = re.sub(":.*?}", "}", config['MAD_TEMPLATE_PATH'].replace("{DATA_DIR}/", DATA_DIR))
 METAMER_LOG_PATH = METAMER_TEMPLATE_PATH.replace('metamers/{model_name}', 'logs/metamers/{model_name}').replace('_metamer.png', '.log')
-MAD_LOG_PATH = MAD_TEMPLATE_PATH.replace('mad_images/fix-', 'logs/mad_images/fix-').replace('_mad.png', '.log')
+MAD_LOG_PATH = MAD_TEMPLATE_PATH.replace('mad_images/1-{model_name_1}', 'logs/mad_images/1-{model_name_1}').replace('_mad.png', '.log')
 CONTINUE_TEMPLATE_PATH = (METAMER_TEMPLATE_PATH.replace('metamers/{model_name}', 'metamers_continue/{model_name}')
                           .replace("{clamp_each_iter}/", "{clamp_each_iter}/attempt-{num}_iter-{extra_iter}"))
 CONTINUE_LOG_PATH = CONTINUE_TEMPLATE_PATH.replace('metamers_continue/{model_name}', 'logs/metamers_continue/{model_name}').replace('_metamer.png', '.log')
@@ -362,14 +364,14 @@ def get_norm_dict(wildcards):
     # this is for MAD images
     except AttributeError:
         norm_dicts = []
-        if 'norm' in wildcards.fix_model_name:
+        if 'norm' in wildcards.model_name_1:
             preproc = ''
             # lienar images should also use the degamma'd textures
             if 'degamma' in wildcards.image_name:
                 preproc += '_degamma'
             norm_dicts.append(op.join(config['DATA_DIR'], 'norm_stats', f'V1_texture{preproc}'
                                       '_norm_stats.pt'))
-        if 'norm' in wildcards.synth_model_name:
+        if 'norm' in wildcards.model_name_2:
             preproc = ''
             # lienar images should also use the degamma'd textures
             if 'degamma' in wildcards.image_name:
@@ -417,7 +419,7 @@ def get_windows(wildcards):
         model_names = [wildcards.model_name]
     except AttributeError:
         # this is for MAD
-        model_names = [wildcards.fix_model_name, wildcards.synth_model_name]
+        model_names = [wildcards.model_name_1, wildcards.model_name_2]
     windows = []
     for mn in model_names:
         if 'cosine' in mn:
@@ -488,7 +490,7 @@ def get_cpu_num(wildcards):
             models = [wildcards.model_name]
         except AttributeError:
             # this is for MAD
-            models = [wildcards.fix_model_name, wildcards.synth_model_name]
+            models = [wildcards.model_name_1, wildcards.model_name_2]
         scaling = [float(mn.split('_scaling-')[1]) if 'scaling' in mn else 1
                    for mn in models]
         # want to get cpus based on the smallest scaling value
@@ -631,6 +633,14 @@ rule create_mad_images:
         import contextlib
         with open(log[0], 'w', buffering=1) as log_file:
             with contextlib.redirect_stdout(log_file), contextlib.redirect_stderr(log_file):
+                if wildcards.fix_model_num == '1':
+                    assert wildcards.synth_model_num == '2'
+                    fix_model_name = wildcards.model_name_1
+                    synth_model_name = wildcards.model_name_2
+                elif wildcards.fix_model_num == '2':
+                    assert wildcards.synth_model_num == '1'
+                    fix_model_name = wildcards.model_name_2
+                    synth_model_name = wildcards.model_name_1
                 if resources.gpu == 1:
                     get_gid = True
                 elif resources.gpu == 0:
@@ -643,15 +653,15 @@ rule create_mad_images:
                 except ValueError:
                     tradeoff_lambda = None
                 fix_norm_dict, synth_norm_dict = None, None
-                if 'norm' in wildcards.fix_model_name:
+                if 'norm' in fix_model_name:
                     fix_norm_dict = input.norm_dict[0]
-                    if 'norm' in wildcards.synth_model_name:
+                    if 'norm' in synth_model_name:
                         synth_norm_dict = input.norm_dict[1]
-                elif 'norm' in wildcards.synth_model_name:
+                elif 'norm' in synth_model_name:
                     synth_norm_dict = input.norm_dict[0]
                 with synth.utils.get_gpu_id(get_gid, on_cluster=ON_CLUSTER) as gpu_id:
-                    synth.create_mad_images.main(wildcards.fix_model_name,
-                                                 wildcards.synth_model_name,
+                    synth.create_mad_images.main(fix_model_name,
+                                                 synth_model_name,
                                                  input.ref_image,
                                                  wildcards.synth_target,
                                                  int(wildcards.seed),
