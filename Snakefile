@@ -55,6 +55,14 @@ MAD_RANGE_PENALTIES = {
     ('1-mse_2-RGC_norm_gaussian_scaling-0.1', 'fix-1_synth-2_min'): '1e2',
     ('1-mse_2-RGC_norm_gaussian_scaling-0.1', 'fix-2_synth-1_max'): '1e3',
     ('1-mse_2-RGC_norm_gaussian_scaling-0.1', 'fix-2_synth-1_min'): '10',
+    ('1-mse_2-V1_norm_s4_gaussian_scaling-0.5', 'fix-1_synth-2_max'): '1e8',
+    ('1-mse_2-V1_norm_s4_gaussian_scaling-0.5', 'fix-1_synth-2_min'): '1e3',
+    ('1-mse_2-V1_norm_s4_gaussian_scaling-0.5', 'fix-2_synth-1_max'): '1e3',
+    ('1-mse_2-V1_norm_s4_gaussian_scaling-0.5', 'fix-2_synth-1_min'): '10',
+    ('1-RGC_norm_gaussian_scaling-0.1_2-V1_norm_s4_gaussian_scaling-0.5', 'fix-1_synth-2_max'): '1e5',
+    ('1-RGC_norm_gaussian_scaling-0.1_2-V1_norm_s4_gaussian_scaling-0.5', 'fix-1_synth-2_min'): '1e2',
+    ('1-RGC_norm_gaussian_scaling-0.1_2-V1_norm_s4_gaussian_scaling-0.5', 'fix-2_synth-1_max'): '1e3',
+    ('1-RGC_norm_gaussian_scaling-0.1_2-V1_norm_s4_gaussian_scaling-0.5', 'fix-2_synth-1_min'): '10',
 }
 
 MAD_TRADEOFF = {
@@ -62,6 +70,14 @@ MAD_TRADEOFF = {
     ('1-mse_2-RGC_norm_gaussian_scaling-0.1', 'fix-1_synth-2_min'): None,
     ('1-mse_2-RGC_norm_gaussian_scaling-0.1', 'fix-2_synth-1_max'): '10',
     ('1-mse_2-RGC_norm_gaussian_scaling-0.1', 'fix-2_synth-1_min'): None,
+    ('1-mse_2-V1_norm_s4_gaussian_scaling-0.5', 'fix-1_synth-2_max'): '1e10',
+    ('1-mse_2-V1_norm_s4_gaussian_scaling-0.5', 'fix-1_synth-2_min'): None,
+    ('1-mse_2-V1_norm_s4_gaussian_scaling-0.5', 'fix-2_synth-1_max'): '1e-10',
+    ('1-mse_2-V1_norm_s4_gaussian_scaling-0.5', 'fix-2_synth-1_min'): '1e-12',
+    ('1-RGC_norm_gaussian_scaling-0.1_2-V1_norm_s4_gaussian_scaling-0.5', 'fix-1_synth-2_max'): '1e9',
+    ('1-RGC_norm_gaussian_scaling-0.1_2-V1_norm_s4_gaussian_scaling-0.5', 'fix-1_synth-2_min'): None,
+    ('1-RGC_norm_gaussian_scaling-0.1_2-V1_norm_s4_gaussian_scaling-0.5', 'fix-2_synth-1_max'): '5e-9',
+    ('1-RGC_norm_gaussian_scaling-0.1_2-V1_norm_s4_gaussian_scaling-0.5', 'fix-2_synth-1_min'): '1e-12',
 }
 
 # this is ugly, but it's easiest way to just replace the one format
@@ -777,7 +793,7 @@ def get_mad_images(wildcards):
                             '{image_name}', 'fix-{fix}_synth-{synth}_{target}', 'opt-Adam_tradeoff-{tradeoff}_penalty-{penalty}_stop-iters-50',
                             'seed-0_init-{init_type}_lr-0.01_e0-0.500_em-3.0000_iter-{max_iter}_stop-crit-1e-09_gpu-1_mad.png')
     order = list(itertools.product([(1, 2), (2, 1)], ['min', 'max']))
-    max_iter = 60000
+    max_iter = 100000
     mads = []
     for (synth, fix), target in order:
         tradeoff = MAD_TRADEOFF.get((f'1-{wildcards.model_name_1}_2-{wildcards.model_name_2}',
@@ -828,3 +844,21 @@ rule example_mad_figure:
                                                        vrange=(0, 255),
                                                        noise_level=float(wildcards.init_type))
                 fig.savefig(output[0], bbox_inches='tight', dpi=fig.dpi)
+
+
+rule all_figures:
+    input:
+        op.join(config['DATA_DIR'], 'figures', 'paper', 'example_metamers_RGC-0.1_VGG16-pool2_V1-0.3.svg'),
+        op.join(config['DATA_DIR'], 'figures', 'paper', 'example_metamers_RGC-0.1_VGG16-pool3_V1-0.3.svg'),
+        op.join(config['DATA_DIR'], 'figures', 'paper', 'example_metamers_RGC-0.1_VGG16-pool4_V1-0.3.svg'),
+        op.join(config['DATA_DIR'], 'figures', 'paper', 'example_metamers_RGC-0.1_VGG16-pool5_V1-0.3.svg'),
+        op.join(config['DATA_DIR'], 'figures', 'paper', 'example_metamers_RGC-0.1_VGG16-pool3_V1-0.5.svg'),
+        op.join(config['DATA_DIR'], 'figures', 'paper', 'example_mad_1-mse_2-RGC_norm_gaussian_scaling-0.1_img-checkerboard_period-64_range-.1,.9_size-256,256_init-20.svg'),
+        op.join(config['DATA_DIR'], 'figures', 'paper', 'example_mad_1-mse_2-RGC_norm_gaussian_scaling-0.1_img-einstein_size-256,256_init-20.svg'),
+        op.join(config['DATA_DIR'], 'figures', 'paper', 'example_mad_1-mse_2-RGC_norm_gaussian_scaling-0.1_img-reptil_skin_size-256,256_init-20.svg'),
+        op.join(config['DATA_DIR'], 'figures', 'paper', 'example_mad_1-mse_2-V1_norm_s4_gaussian_scaling-0.5_img-checkerboard_period-64_range-.1,.9_size-256,256_init-20.svg'),
+        op.join(config['DATA_DIR'], 'figures', 'paper', 'example_mad_1-mse_2-V1_norm_s4_gaussian_scaling-0.5_img-einstein_size-256,256_init-20.svg'),
+        op.join(config['DATA_DIR'], 'figures', 'paper', 'example_mad_1-mse_2-V1_norm_s4_gaussian_scaling-0.5_img-reptil_skin_size-256,256_init-20.svg'),
+        op.join(config['DATA_DIR'], 'figures', 'paper', 'example_mad_1-RGC_norm_gaussian_scaling-0.1_2-V1_norm_s4_gaussian_scaling-0.5_img-checkerboard_period-64_range-.1,.9_size-256,256_init-20.svg'),
+        op.join(config['DATA_DIR'], 'figures', 'paper', 'example_mad_1-RGC_norm_gaussian_scaling-0.1_2-V1_norm_s4_gaussian_scaling-0.5_img-einstein_size-256,256_init-20.svg'),
+        op.join(config['DATA_DIR'], 'figures', 'paper', 'example_mad_1-RGC_norm_gaussian_scaling-0.1_2-V1_norm_s4_gaussian_scaling-0.5_img-reptil_skin_size-256,256_init-20.svg'),
