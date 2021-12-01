@@ -80,6 +80,10 @@ MAD_TRADEOFF = {
     ('1-RGC_norm_gaussian_scaling-0.1_2-V1_norm_s4_gaussian_scaling-0.5', 'fix-2_synth-1_min'): '1e-12',
 }
 
+# the above was all done with noise level of 20, so the following gives a
+# multiple to scale that up or down
+TRADEOFF_NOISE_SCALE = {'5': '1e2', '10': '1e1', '15': '1e1'}
+
 # this is ugly, but it's easiest way to just replace the one format
 # target while leaving the others alone
 DATA_DIR = config['DATA_DIR']
@@ -792,16 +796,36 @@ def get_mad_images(wildcards):
     template_path = op.join(config['DATA_DIR'], 'mad_images', '1-{model_name_1}_2-{model_name_2}',
                             '{image_name}', 'fix-{fix}_synth-{synth}_{target}', 'opt-Adam_tradeoff-{tradeoff}_penalty-{penalty}_stop-iters-50',
                             'seed-0_init-{init_type}_lr-0.01_e0-0.500_em-3.0000_iter-{max_iter}_stop-crit-1e-09_gpu-1_mad.png')
-    order = list(itertools.product([(1, 2), (2, 1)], ['min', 'max']))
+    try:
+        # this is for example_mad_figure
+        model1 = wildcards.model_name_1
+        model2 = wildcards.model_name_2
+        noise_levels = [wildcards.init_type]
+        order = itertools.product([(1, 2), (2, 1)], ['min', 'max'])
+    except AttributeError:
+        # this is for mad_noise_levels_figure
+        model1 = 'mse'
+        model2 = wildcards.model_name
+        noise_levels = wildcards.noise_levels.split(',')
+        order = [((2, 1), 'min'), ((2, 1), 'max')]
     max_iter = 100000
     mads = []
     for (synth, fix), target in order:
-        tradeoff = MAD_TRADEOFF.get((f'1-{wildcards.model_name_1}_2-{wildcards.model_name_2}',
-                                     f'fix-{fix}_synth-{synth}_{target}'), None)
-        penalty = MAD_RANGE_PENALTIES.get((f'1-{wildcards.model_name_1}_2-{wildcards.model_name_2}',
+        tradeoff_base = MAD_TRADEOFF.get((f'1-{model1}_2-{model2}',
+                                          f'fix-{fix}_synth-{synth}_{target}'), None)
+        penalty = MAD_RANGE_PENALTIES.get((f'1-{model1}_2-{model2}',
                                            f'fix-{fix}_synth-{synth}_{target}'), '1e3')
-        mads.append(template_path.format(fix=fix, synth=synth, target=target, max_iter=max_iter,
-                                         tradeoff=tradeoff, penalty=penalty, **wildcards))
+        for noise in noise_levels:
+            tradeoff_scale = TRADEOFF_NOISE_SCALE.get(noise, '1e0')
+            tradeoff = tradeoff_base
+            if tradeoff is not None:
+                e_value = int(tradeoff.split('e')[-1]) + int(tradeoff_scale.split('e')[-1])
+                tradeoff = f'{tradeoff.split("e")[0]}e{e_value}'
+            mads.append(template_path.format(fix=fix, synth=synth, target=target,
+                                             max_iter=max_iter, tradeoff=tradeoff,
+                                             penalty=penalty, model_name_1=model1,
+                                             model_name_2=model2, init_type=noise,
+                                             image_name=wildcards.image_name))
     return mads
 
 
@@ -833,7 +857,7 @@ rule example_mad_figure:
                 as_gray = False if ('VGG' in wildcards.model_name_1 or 'VGG' in wildcards.model_name_2) else True
                 for img in input:
                     img = po.load_images(img, as_gray=as_gray)
-                    if as_gray and img.shape[1] == 1:
+                    if not as_gray and img.shape[1] == 1:
                         img = img.repeat(1, 3, 1, 1)
                     imgs.append(img)
                 imgs = 255 * torch.cat(imgs)
@@ -843,6 +867,51 @@ rule example_mad_figure:
                                                        model_name_1, model_name_2,
                                                        vrange=(0, 255),
                                                        noise_level=float(wildcards.init_type))
+                fig.savefig(output[0], bbox_inches='tight', dpi=fig.dpi)
+
+
+rule mad_noise_levels_figure:
+    input:
+        get_ref_image,
+        get_mad_images,
+    output:
+        op.join(config['DATA_DIR'], 'figures', '{context}', 'mad_noise_levels_{model_name}_img-{image_name}_noise-{noise_levels}.svg'),
+    log:
+        op.join(config['DATA_DIR'], 'logs', 'figures', '{context}', 'mad_noise_levels_{model_name}_img-{image_name}_noise-{noise_levels}.log'),
+    benchmark:
+        op.join(config['DATA_DIR'], 'logs', 'figures', '{context}', 'mad_noise_levels_{model_name}_img-{image_name}_noise-{noise_levels}_benchmark.txt'),
+    run:
+        import synth
+        import contextlib
+        import matplotlib.pyplot as plt
+        import torch
+        import plenoptic as po
+        with open(log[0], 'w', buffering=1) as log_file:
+            with contextlib.redirect_stdout(log_file), contextlib.redirect_stderr(log_file):
+                style, _ = synth.style.plotting_style(wildcards.context)
+                plt.style.use(style)
+                # need to load these in separately because some may be RGB, some
+                # grayscale, and we need to turn them all into 3-channel images
+                # for plotting
+                imgs = []
+                as_gray = False if 'VGG' in wildcards.model_name else True
+                for img in input:
+                    img = po.load_images(img, as_gray=as_gray)
+                    if not as_gray and img.shape[1] == 1:
+                        img = img.repeat(1, 3, 1, 1)
+                    imgs.append(img)
+                imgs = 255 * torch.cat(imgs)
+                noise_levels = torch.tensor([float(i) for i in wildcards.noise_levels.split(',')], dtype=torch.float32)
+                noise_levels = noise_levels.unsqueeze(-1).unsqueeze(-1).unsqueeze(-1)
+                model_name = synth.figures.remap_model_name(wildcards.model_name)
+                ref = imgs[0].unsqueeze(0)
+                min_images = imgs[1:len(noise_levels)+1]
+                max_images = imgs[-len(noise_levels):]
+                fig = synth.figures.mad_noise_levels_figure(ref, min_images,
+                                                            max_images,
+                                                            noise_levels,
+                                                            model_name,
+                                                            vrange=(0, 255))
                 fig.savefig(output[0], bbox_inches='tight', dpi=fig.dpi)
 
 

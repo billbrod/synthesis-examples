@@ -61,7 +61,7 @@ def _add_initial_noise(img, initial_noise, seed=0, allowed_range=(0, 255)):
 def example_mad_figure(ref_image, image_metric1_min, image_metric1_max,
                        image_metric2_min, image_metric2_max, metric1_name,
                        metric2_name, noise_seed=0, noise_level=20,
-                       vrange=(0, 1)):
+                       vrange=(0, 255)):
     """Create a figure showing example MAD images for a single model.
 
     This looks like Figure 8 from [1]_, except that we have a small inset
@@ -160,4 +160,76 @@ def example_mad_figure(ref_image, image_metric1_min, image_metric1_max,
                      arrowprops={'color': 'r', 'shrink': .05})
     init_ax.text(-.3, .55, f'Maximum {metric2_name} for\nfixed {metric1_name}',
                  transform=init_ax.transAxes, va='bottom', ha='center')
+    return fig
+
+
+def mad_noise_levels_figure(ref_image, min_images, max_images, noise_levels,
+                            metric_name, noise_seed=0, vrange=(0, 255)):
+    """Create figure showing synthesized mad images for different noise levels.
+
+    Note that these should be one half of a full MAD set, that is, they should
+    all be holding one metric constant while the other is max'ed or min'ed.
+    It's assumed that the constant metric will be MSE.
+
+    This looks like Figure 9 from [1]_, except that we have a small inset
+    showing the difference between each synthesized image and the reference
+    image.
+
+    Parameters
+    ----------
+    ref_image : tensor
+        4d tensor of a single image.
+    min_images : tensor
+        4d tensor of images where the synthesis metric was minimized.
+    max_images : tensor
+        4d tensor of images where the synthesis metric was maximized.
+    noise_levels : tensor
+        4d tensor with the noise levels used to initialize the differnet
+        images. Noise values should be along the first dimension.
+    metric_name : str
+        str giving the name of the synthesis metric, for labeling purposes
+    noise_seed : int
+        RNG seed to use for generating noise for initial image
+    vrange : tuple or str
+        Vrange to pass to imshow for the main images (all difference images are
+        plotted with 'indep0'). See docstring of pyrtools.imshow for details.
+
+    Returns
+    -------
+    fig : plt.Figure
+        the created figure.
+
+    References
+    ----------
+    .. [1] Wang, Z., & Simoncelli, E. P. (2008). Maximum differentiation (MAD)
+       competition: A methodology for comparing computational models of perceptual
+       discriminability. Journal of Vision, 8(12), 1–13.
+       http://dx.doi.org/10.1167/8.12.8
+
+    """
+    assert len(max_images) == len(min_images) and len(max_images) == len(noise_levels)
+    assert noise_levels.ndim == 4, "noise_levels must be a 4d tensor or torch's implicit reshaping won't work!"
+    # this will add the varying noise levels all to a single sample of noise,
+    # but this is what's done in for this synthesis (they all used the same
+    # seed)
+    initial_images = _add_initial_noise(ref_image, noise_levels, noise_seed)
+    fig = po.imshow([initial_images, min_images, max_images],
+                    col_wrap=len(noise_levels), vrange=vrange, title=None)
+    # label the noise along the top row, taking advantage of the fact that zip
+    # stops when the shortest iterable runs out
+    for ax, n in zip(fig.axes, noise_levels):
+        ax.set_title(f'Initial MSE: {int(n.square().item())}')
+    # want these to be the same size as the title
+    for i, title in enumerate(['Initial image', f'Min {metric_name}',
+                               f'Max {metric_name}']):
+        fig.axes[i*len(noise_levels)].set_ylabel(title,
+                                                 fontsize=plt.rcParams['axes.titlesize'])
+    # this is the space between axes
+    space = 10 / ref_image.shape[-1]
+    # this line separates the initial image axes from the MAD image axes, all
+    # the way across the figure and a bit more
+    line = mpl.lines.Line2D([-3*space, 6+8*space], [-space/2, -space/2],
+                            color='k', linestyle='--',
+                            transform=fig.axes[0].transAxes)
+    fig.add_artist(line)
     return fig
