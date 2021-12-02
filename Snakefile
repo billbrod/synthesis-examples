@@ -42,11 +42,12 @@ ruleorder:
     preproc_image > crop_image > generate_image
 
 METAMER_RANGE_PENALTIES = {
-    ('RGC_norm_gaussian_scaling-0.06', 'reptil_skin_size-256,256'): 10,
-    ('VGG16_pool4', 'einstein_size-256,256'): 1e4,
-    ('VGG16_pool3', 'reptil_skin_size-256,256'): 1e4,
-    ('VGG16_pool3', 'checkerboard_period-64_range-.1,.9_size-256,256'): 1e5,
     ('PSTexture', 'checkerboard_period-64_range-.1,.9_size-256,256'): 1e4,
+    ('RGC_norm_gaussian_scaling-0.06', 'reptil_skin_size-256,256'): 10,
+    ('VGG16_pool3', 'checkerboard_period-64_range-.1,.9_size-256,256'): 1e6,
+    ('VGG16_pool3', 'reptil_skin_size-256,256'): 1e4,
+    ('VGG16_pool4', 'checkerboard_period-64_range-.1,.9_size-256,256'): 1e4,
+    ('VGG16_pool4', 'einstein_size-256,256'): 1e4,
 }
 
 MAD_RANGE_PENALTIES = {
@@ -717,9 +718,15 @@ rule create_mad_images:
 
 
 def get_metamers(wildcards):
-    template_path = op.join(config['DATA_DIR'], 'metamers', '{model}', '{image}', 'opt-Adam_loss-{loss}_penalty-{penalty}',
-                            'stop-iters-50_ctf-{ctf}_ctf-crit-{ctf_crit}_ctf-iters-{ctf_iters}',
-                            'seed-0_init-white_lr-{lr}_e0-0.500_em-3.000_iter-{max_iter}_stop-crit-1e-09_gpu-1_metamer.png')
+    # use the config version because it has the string formatting tags in it
+    # (whereas the constant METAMER_TEMPLATE_PATH removes them for snakemake)
+    template_path = config['METAMER_TEMPLATE_PATH']
+    # these are shared by all the metamers we want to grab
+    kwargs = {'optimizer': 'Adam', 'stop_iters': 50, 'seed': 0, 'init_type': 'white',
+              'min_ecc': .5, 'max_ecc': 3, 'stop_criterion': 1e-9, 'gpu': 1,
+              # because of how we set up the constant DATA_DIR, we know it ends
+              # with a /, which we need to remove for this
+              'DATA_DIR': DATA_DIR[:-1]}
     images = ['einstein_size-256,256', 'reptil_skin_size-256,256', 'checkerboard_period-64_range-.1,.9_size-256,256']
     models = [f'RGC_norm_gaussian_scaling-{wildcards.RGC_scaling}', 'PSTexture', f'VGG16_pool{wildcards.poolN}',
               f'V1_norm_s4_gaussian_scaling-{wildcards.V1_scaling}']
@@ -734,12 +741,14 @@ def get_metamers(wildcards):
         loss = 'l2' if model.startswith("PSTexture") else 'mse'
         for im in images:
             penalty = METAMER_RANGE_PENALTIES.get((model, im), default_penalty)
-            metamers.append(template_path.format(model=model, image=im,
-                                                 penalty=penalty, ctf=ctf,
+            metamers.append(template_path.format(model_name=model,
+                                                 image_name=im,
+                                                 range_lambda=penalty,
+                                                 coarse_to_fine=ctf,
                                                  ctf_iters=ctf_iters,
-                                                 ctf_crit=ctf_crit,
-                                                 loss=loss, lr=lr,
-                                                 max_iter=max_iter))
+                                                 ctf_criterion=utils.AnyOrNone(ctf_crit),
+                                                 loss=loss, learning_rate=lr,
+                                                 max_iter=max_iter, **kwargs))
     return metamers
 
 
@@ -792,9 +801,15 @@ def get_ref_image(wildcards):
 
 
 def get_mad_images(wildcards):
-    template_path = op.join(config['DATA_DIR'], 'mad_images', '1-{model_name_1}_2-{model_name_2}',
-                            '{image_name}', 'fix-{fix}_synth-{synth}_{target}', 'opt-Adam_tradeoff-{tradeoff}_penalty-{penalty}_stop-iters-50',
-                            'seed-0_init-{init_type}_lr-0.01_e0-0.500_em-3.0000_iter-{max_iter}_stop-crit-1e-09_gpu-1_mad.png')
+    # use the config version because it has the string formatting tags in it
+    # (whereas the constant MAD_TEMPLATE_PATH removes them for snakemake)
+    template_path = config['MAD_TEMPLATE_PATH']
+    # these are shared by all the mad images we want to grab
+    kwargs = {'optimizer': 'Adam', 'stop_iters': 50, 'seed': 0,
+              'min_ecc': .5, 'max_ecc': 3, 'stop_criterion': 1e-9, 'gpu': 1,
+              # because of how we set up the constant DATA_DIR, we know it ends
+              # with a /, which we need to remove for this
+              'learning_rate': .1, 'DATA_DIR': DATA_DIR[:-1]}
     try:
         # this is for example_mad_figure
         model1 = wildcards.model_name_1
@@ -819,11 +834,17 @@ def get_mad_images(wildcards):
             tradeoff = tradeoff_base
             if tradeoff is not None:
                 tradeoff *= tradeoff_scale
-            mads.append(template_path.format(fix=fix, synth=synth, target=target,
-                                             max_iter=max_iter, tradeoff=tradeoff,
-                                             penalty=penalty, model_name_1=model1,
-                                             model_name_2=model2, init_type=noise,
-                                             image_name=wildcards.image_name))
+            mads.append(template_path.format(fix_model_num=fix,
+                                             synth_model_num=synth,
+                                             synth_target=target,
+                                             max_iter=max_iter,
+                                             tradeoff_lambda=utils.AnyOrNone(tradeoff),
+                                             range_lambda=penalty,
+                                             model_name_1=model1,
+                                             model_name_2=model2,
+                                             init_type=noise,
+                                             image_name=wildcards.image_name,
+                                             **kwargs))
     return mads
 
 

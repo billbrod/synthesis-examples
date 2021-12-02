@@ -217,3 +217,19 @@ def get_gpu_id(get_gid=True, n_gpus=4, on_cluster=False):
         yield allocated_gid
     finally:
         os.system(f"dotlockfile -u /tmp/LCK_gpu_{allocated_gid}.lock")
+
+
+class AnyOrNone(object):  # The wrapper is not type-specific
+    """Allow formatting strings for values that might be None.
+
+    from https://stackoverflow.com/a/51126199
+
+    """
+    def __init__(self, value):
+        self.value = value
+
+    def __format__(self, *args, **kwargs):
+        if self.value is None:
+            return "None"
+        else:
+            return self.value.__format__(*args, **kwargs)
