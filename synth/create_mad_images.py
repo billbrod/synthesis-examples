@@ -15,8 +15,8 @@ import matplotlib as mpl
 import warnings
 
 
-def setup_metric(metric_name, image, min_ecc, max_ecc, cache_dir,
-                 normalize_dict=None, gpu_id=None):
+def setup_metric(metric_name, image, min_ecc=None, max_ecc=None,
+                 cache_dir=None, normalize_dict=None, gpu_id=None):
     r"""Setup the metric.
 
     We initialize the metric, with the specified parameters.
