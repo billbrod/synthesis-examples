@@ -37,7 +37,9 @@ def plotting_style(context='paper', for_package='matplotlib', figsize='full'):
 
     """
     if for_package == 'matplotlib':
-        params = {'figure.facecolor': 'white', 'axes.labelcolor': '.15',
+        # the svg backend doesn't require an X server and I've been having
+        # issues with Qt5Agg, where it doesn't respect my dpi choice
+        params = {'backend': 'svg', 'figure.facecolor': 'white', 'axes.labelcolor': '.15',
                   'xtick.direction': 'out', 'ytick.direction': 'out',
                   'xtick.color': '.15', 'ytick.color': '.15',
                   'axes.axisbelow': True, 'grid.linestyle': '-',

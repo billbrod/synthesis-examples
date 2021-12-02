@@ -767,12 +767,15 @@ rule example_metamer_figure:
     run:
         import synth
         import contextlib
+        import matplotlib as mpl
         import matplotlib.pyplot as plt
         import torch
         import plenoptic as po
         with open(log[0], 'w', buffering=1) as log_file:
             with contextlib.redirect_stdout(log_file), contextlib.redirect_stderr(log_file):
                 style, _ = synth.style.plotting_style(wildcards.context)
+                # need to explicitly call mpl.use to change the backend
+                mpl.use(style['backend'])
                 plt.style.use(style)
                 # need to load these in separately because some are RGB, some
                 # grayscale, and we need to turn them all into 3-channel images
@@ -862,12 +865,15 @@ rule example_mad_figure:
     run:
         import synth
         import contextlib
+        import matplotlib as mpl
         import matplotlib.pyplot as plt
         import torch
         import plenoptic as po
         with open(log[0], 'w', buffering=1) as log_file:
             with contextlib.redirect_stdout(log_file), contextlib.redirect_stderr(log_file):
                 style, _ = synth.style.plotting_style(wildcards.context)
+                # need to explicitly call mpl.use to change the backend
+                mpl.use(style['backend'])
                 plt.style.use(style)
                 # need to load these in separately because some may be RGB, some
                 # grayscale, and we need to turn them all into 3-channel images
@@ -902,12 +908,15 @@ rule mad_noise_levels_figure:
     run:
         import synth
         import contextlib
+        import matplotlib as mpl
         import matplotlib.pyplot as plt
         import torch
         import plenoptic as po
         with open(log[0], 'w', buffering=1) as log_file:
             with contextlib.redirect_stdout(log_file), contextlib.redirect_stderr(log_file):
                 style, _ = synth.style.plotting_style(wildcards.context)
+                # need to explicitly call mpl.use to change the backend
+                mpl.use(style['backend'])
                 plt.style.use(style)
                 # need to load these in separately because some may be RGB, some
                 # grayscale, and we need to turn them all into 3-channel images

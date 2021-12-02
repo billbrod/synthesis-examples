@@ -109,9 +109,6 @@ def example_mad_figure(ref_image, image_metric1_min, image_metric1_max,
     fig = plt.figure(dpi=ppi,
                      figsize=((10*ax_size[1]+wspace*ax_size[1]*9)/ppi,
                               (8*ax_size[0]+hspace*ax_size[0]*7)/ppi))
-    # for some reason, just setting the dpi above doesn't always work, but the
-    # following seems to do it
-    fig.set_dpi(ppi)
     # this way the axes use the full figure
     gs = mpl.gridspec.GridSpec(8, 10, wspace=wspace, hspace=hspace, top=1,
                                right=1, left=0, bottom=0)
