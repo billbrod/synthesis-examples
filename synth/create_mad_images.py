@@ -3,7 +3,8 @@
 
 """
 from . import create_metamers
-import re
+import matplotlib.pyplot as plt
+import itertools
 import torch
 import plenoptic as po
 import pyrtools as pt
@@ -252,10 +253,17 @@ def plot_image_diff(mad, fix_model=None, synthesis_model=None):
             synthesis_full, synthesis_half = _get_min_window_ecc(synthesis_model)
     # as of Nov 30, 2021, this isn't handled by MADCompetition.to()
     initial_image = mad.initial_signal.to('cpu')
+    if initial_image.shape[1] == 3:
+        as_rgb = True
+    else:
+        as_rgb = False
     imgs = [mad.reference_signal, mad.synthesized_signal,
             mad.synthesized_signal - mad.reference_signal,
-            initial_image, mad.synthesized_signal,
+            initial_image, None,
             mad.synthesized_signal - initial_image]
+    # have to divide images by 255 or matplotlib's imshow clips the values
+    # for RGB images
+    imgs = [img / 255 if img is not None else None for img in imgs]
     titles = ['Reference image',
               (f'MAD image\n{mad.synthesis_target}imize {mad.synthesis_metric.__name__}'
                f'\n({mad.fixed_metric.__name__} held constant)'),
@@ -263,41 +271,69 @@ def plot_image_diff(mad, fix_model=None, synthesis_model=None):
               'Initial image', '',
               'MAD image - initial image']
     # want the same vrange is for the four images that aren't differences
-    vrange = (min([im.min() for im in [*imgs[:2], *imgs[3:5]]]),
-              max([im.max() for im in [*imgs[:2], *imgs[3:5]]]))
+    vrange = (min([im.min() for im in [*imgs[:2], imgs[3]]]),
+              max([im.max() for im in [*imgs[:2], imgs[3]]]))
     vranges = [vrange, vrange, 'indep0', vrange, vrange, 'indep0']
-    fig = pt.make_figure(2, 3, imgs[0].shape[-2:])
-    for im, ax, title, vr in zip(imgs, fig.axes, titles, vranges):
-        po.imshow(im, vrange=vr, title=title, ax=ax, zoom=1)
+    ax_kwargs = {'frameon': False, 'xticks': [], 'yticks': []}
+    # add 1 so there's a bit of a buffer here
+    ax_size = [s+1 for s in initial_image.shape[-2:]]
+    # this way we have 10 pixels between axes in each direction
+    wspace = 10 / ax_size[1]
+    hspace = 10 / ax_size[0]
+    ppi = 96
+    if as_rgb:
+        width_ratios = [1, 1, 3.5]
+    else:
+        width_ratios = [1, 1, 1]
+    fig = plt.figure(dpi=ppi,
+                     figsize=((sum(width_ratios)*ax_size[1]+wspace*ax_size[1]*sum(width_ratios)-1)/ppi,
+                              (2*(ax_size[0]/.8)+hspace*ax_size[0]*1)/ppi))
+    # this way the axes use the full figure
+    gs = mpl.gridspec.GridSpec(2, 3, wspace=wspace, hspace=hspace, top=1,
+                               right=1, left=0, bottom=0, width_ratios=width_ratios)
+    axes = [fig.add_subplot(gs[i, j], **ax_kwargs)
+            for i, j in itertools.product(range(2), range(3))]
+    for im, ax, title, vr in zip(imgs, axes, titles, vranges):
+        if im is None:
+            continue
+        if vr != 'indep0':
+            po.imshow(im, vrange=vr, title=title, ax=ax, zoom=1, as_rgb=as_rgb)
         # then we're plotting the difference image
-        if vr == 'indep0':
-            handles = []
-            labels = []
-            if fix_model is not None:
-                fix_full_circ = mpl.patches.Circle([s//2 for s in im.shape[-2:]],
-                                                   round(fix_full), fc='none', ec='r')
-                ax.add_artist(fix_full_circ)
-                fix_half_circ = mpl.patches.Circle([s//2 for s in im.shape[-2:]],
-                                                   round(fix_half), fc='none', ec='r',
-                                                   linestyle='--')
-                ax.add_artist(fix_half_circ)
-                handles += [fix_full_circ, fix_half_circ]
-                labels += [f'{mad.fixed_metric.__name__} window full area threshold',
-                           f'{mad.fixed_metric.__name__} window FWHM area threshold']
-            if synthesis_model is not None:
-                synth_full_circ = mpl.patches.Circle([s//2 for s in im.shape[-2:]],
-                                                     round(synthesis_full), fc='none', ec='b')
-                ax.add_artist(synth_full_circ)
-                synth_half_circ = mpl.patches.Circle([s//2 for s in im.shape[-2:]],
-                                                     round(synthesis_half), fc='none', ec='b',
-                                                     linestyle='--')
-                ax.add_artist(synth_half_circ)
-                handles += [synth_full_circ, synth_half_circ]
-                labels += [f'{mad.synthesis_metric.__name__} window full area threshold',
-                           f'{mad.synthesis_metric.__name__} window FWHM area threshold']
-    # only need only plot of the synthesized image, so hide the second one and
-    # move the first one down.
-    fig.axes[-2].set_visible(False)
+        else:
+            if as_rgb:
+                sub_gs = ax.get_subplotspec().subgridspec(1, 3)
+                sub_axes = [fig.add_subplot(sub_gs[0, i], **ax_kwargs)
+                            for i in range(3)]
+            else:
+                sub_axes = [ax]
+            for i, ax in enumerate(sub_axes):
+                po.imshow(im, vrange=vr, title=title+ f'\n[channel {i}]', ax=ax, channel_idx=i,
+                          zoom=1)
+                handles = []
+                labels = []
+                if fix_model is not None:
+                    fix_full_circ = mpl.patches.Circle([s//2 for s in im.shape[-2:]],
+                                                       round(fix_full), fc='none', ec='r')
+                    ax.add_artist(fix_full_circ)
+                    fix_half_circ = mpl.patches.Circle([s//2 for s in im.shape[-2:]],
+                                                       round(fix_half), fc='none', ec='r',
+                                                       linestyle='--')
+                    ax.add_artist(fix_half_circ)
+                    handles += [fix_full_circ, fix_half_circ]
+                    labels += [f'{mad.fixed_metric.__name__} window full area threshold',
+                               f'{mad.fixed_metric.__name__} window FWHM area threshold']
+                if synthesis_model is not None:
+                    synth_full_circ = mpl.patches.Circle([s//2 for s in im.shape[-2:]],
+                                                         round(synthesis_full), fc='none', ec='b')
+                    ax.add_artist(synth_full_circ)
+                    synth_half_circ = mpl.patches.Circle([s//2 for s in im.shape[-2:]],
+                                                         round(synthesis_half), fc='none', ec='b',
+                                                         linestyle='--')
+                    ax.add_artist(synth_half_circ)
+                    handles += [synth_full_circ, synth_half_circ]
+                    labels += [f'{mad.synthesis_metric.__name__} window full area threshold',
+                               f'{mad.synthesis_metric.__name__} window FWHM area threshold']
+    # only need only plot of the synthesized image, so move the first one down.
     ax = fig.axes[1]
     # inspired by
     # https://matplotlib.org/stable/gallery/images_contours_and_fields/contour_demo.html
@@ -352,15 +388,18 @@ def save(save_path, mad, fix_model=None, synthesis_model=None):
         mad_image = mad_image.transpose(1, 2, 0)
     # this already lies between 0 and 255, so we convert it to ints
     imageio.imwrite(mad_path, mad_image.astype(np.uint8))
-    synthesis_path = op.splitext(save_path)[0] + "_synthesis.png"
-    print(f"Saving synthesis image at {synthesis_path}")
-    fig, _ = po.synth.mad_competition.plot_synthesis_status(mad)
-    fig.axes[-1].set(yscale='log')
-    fig.savefig(synthesis_path)
     diff_path = op.splitext(save_path)[0] + "_image-diff.png"
     print(f"Saving image diff figure at {diff_path}")
     fig = plot_image_diff(mad, fix_model, synthesis_model)
     fig.savefig(diff_path, bbox_inches='tight')
+    synthesis_path = op.splitext(save_path)[0] + "_synthesis.png"
+    print(f"Saving synthesis image at {synthesis_path}")
+    # have to divide this by 255 because matplotlib's imshow clips color images
+    if mad_image.ndim == 3:
+        mad.synthesized_signal = mad.synthesized_signal / 255
+    fig, _ = po.synth.mad_competition.plot_synthesis_status(mad)
+    fig.axes[-1].set(yscale='log')
+    fig.savefig(synthesis_path)
 
 
 def main(fix_metric_name, synthesis_metric_name, image, synthesis_target,
