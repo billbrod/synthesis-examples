@@ -131,10 +131,9 @@ def setup_model(model_name, image, min_ecc, max_ecc, cache_dir,
 
     We initialize the model, with the specified parameters, and return it.
 
-    `model_name` must either a model, 'VGG16_poolN' (where N is an int between
-    1 and 5), 'PSTexture' or one of our foveated models. If a foveated model,
-    it must be constructed of several parts, for which you have several
-    chocies:
+    `model_name` must be 'VGG16_poolN' (where N is an int between 1 and 5),
+    'PSTexture' or one of our foveated models. If a foveated model, it must be
+    constructed of several parts, for which you have several chocies:
     `'{visual_area}{options}_{window_type}_scaling-{scaling}'`:
     - `visual_area`: which visual area we're modeling.`'RGC'` (retinal
       ganglion cells, `plenoptic.simul.PooledRGC` class) or

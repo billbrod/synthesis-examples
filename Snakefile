@@ -67,15 +67,11 @@ MAD_RANGE_PENALTIES = {
 
 MAD_TRADEOFF = {
     ('1-mse_2-RGC_norm_gaussian_scaling-0.1', 'fix-1_synth-2_max'): 1e4,
-    ('1-mse_2-RGC_norm_gaussian_scaling-0.1', 'fix-1_synth-2_min'): None,
     ('1-mse_2-RGC_norm_gaussian_scaling-0.1', 'fix-2_synth-1_max'): 10,
-    ('1-mse_2-RGC_norm_gaussian_scaling-0.1', 'fix-2_synth-1_min'): None,
     ('1-mse_2-V1_norm_s4_gaussian_scaling-0.5', 'fix-1_synth-2_max'): 1e10,
-    ('1-mse_2-V1_norm_s4_gaussian_scaling-0.5', 'fix-1_synth-2_min'): None,
     ('1-mse_2-V1_norm_s4_gaussian_scaling-0.5', 'fix-2_synth-1_max'): 1e-10,
     ('1-mse_2-V1_norm_s4_gaussian_scaling-0.5', 'fix-2_synth-1_min'): 1e-12,
     ('1-RGC_norm_gaussian_scaling-0.1_2-V1_norm_s4_gaussian_scaling-0.5', 'fix-1_synth-2_max'): 1e9,
-    ('1-RGC_norm_gaussian_scaling-0.1_2-V1_norm_s4_gaussian_scaling-0.5', 'fix-1_synth-2_min'): None,
     ('1-RGC_norm_gaussian_scaling-0.1_2-V1_norm_s4_gaussian_scaling-0.5', 'fix-2_synth-1_max'): 5e-9,
     ('1-RGC_norm_gaussian_scaling-0.1_2-V1_norm_s4_gaussian_scaling-0.5', 'fix-2_synth-1_min'): 1e-12,
 }
