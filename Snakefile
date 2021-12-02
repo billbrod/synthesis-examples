@@ -960,3 +960,6 @@ rule all_figures:
         op.join(config['DATA_DIR'], 'figures', 'paper', 'example_mad_1-RGC_norm_gaussian_scaling-0.1_2-V1_norm_s4_gaussian_scaling-0.5_img-einstein_size-256,256_init-20.svg'),
         op.join(config['DATA_DIR'], 'figures', 'paper', 'example_mad_1-RGC_norm_gaussian_scaling-0.1_2-V1_norm_s4_gaussian_scaling-0.5_img-reptil_skin_size-256,256_init-20.svg'),
         op.join(config['DATA_DIR'], 'figures', 'paper', 'mad_noise_levels_RGC_norm_gaussian_scaling-0.1_img-checkerboard_period-64_range-.1,.9_size-256,256_noise-5,10,15,20,25,30.svg'),
+        op.join(config['DATA_DIR'], 'figures', 'paper', 'mad_noise_levels_V1_norm_s4_gaussian_scaling-0.5_img-checkerboard_period-64_range-.1,.9_size-256,256_noise-5,10,15,20,25,30.svg'),
+        op.join(config['DATA_DIR'], 'figures', 'paper', 'mad_noise_levels_V1_norm_s4_gaussian_scaling-0.5_img-einstein_size-256,256_noise-5,10,15,20,25,30.svg'),
+        op.join(config['DATA_DIR'], 'figures', 'paper', 'mad_noise_levels_V1_norm_s4_gaussian_scaling-0.5_img-reptil_skin_size-256,256_noise-5,10,15,20,25,30.svg'),
