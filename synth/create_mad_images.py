@@ -196,10 +196,12 @@ def plot_image_diff(mad, fix_model=None, synthesis_model=None):
         fix_full, fix_half = _get_min_window_ecc(fix_model)
     if synthesis_model is not None:
         synthesis_full, synthesis_half = _get_min_window_ecc(synthesis_model)
+    # as of Nov 30, 2021, this isn't handled by MADCompetition.to()
+    initial_image = mad.initial_signal.to('cpu')
     imgs = [mad.reference_signal, mad.synthesized_signal,
             mad.synthesized_signal - mad.reference_signal,
-            mad.initial_signal, mad.synthesized_signal,
-            mad.synthesized_signal - mad.reference_signal]
+            initial_image, mad.synthesized_signal,
+            mad.synthesized_signal - initial_image]
     titles = ['Reference image',
               (f'MAD image\n{mad.synthesis_target}imize {mad.synthesis_metric.__name__}'
                f'\n({mad.fixed_metric.__name__} held constant)'),
