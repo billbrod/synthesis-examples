@@ -41,48 +41,47 @@ wildcard_constraints:
 ruleorder:
     preproc_image > crop_image > generate_image
 
-# these are strings so we can control exactly how they're formatted in the path
 METAMER_RANGE_PENALTIES = {
-    ('RGC_norm_gaussian_scaling-0.06', 'reptil_skin_size-256,256'): '10',
-    ('VGG16_pool4', 'einstein_size-256,256'): '1e4',
-    ('VGG16_pool3', 'reptil_skin_size-256,256'): '1e4',
-    ('VGG16_pool3', 'checkerboard_period-64_range-.1,.9_size-256,256'): '1e5',
-    ('PSTexture', 'checkerboard_period-64_range-.1,.9_size-256,256'): '1e4',
+    ('RGC_norm_gaussian_scaling-0.06', 'reptil_skin_size-256,256'): 10,
+    ('VGG16_pool4', 'einstein_size-256,256'): 1e4,
+    ('VGG16_pool3', 'reptil_skin_size-256,256'): 1e4,
+    ('VGG16_pool3', 'checkerboard_period-64_range-.1,.9_size-256,256'): 1e5,
+    ('PSTexture', 'checkerboard_period-64_range-.1,.9_size-256,256'): 1e4,
 }
 
 MAD_RANGE_PENALTIES = {
-    ('1-mse_2-RGC_norm_gaussian_scaling-0.1', 'fix-1_synth-2_max'): '1e3',
-    ('1-mse_2-RGC_norm_gaussian_scaling-0.1', 'fix-1_synth-2_min'): '1e2',
-    ('1-mse_2-RGC_norm_gaussian_scaling-0.1', 'fix-2_synth-1_max'): '1e3',
-    ('1-mse_2-RGC_norm_gaussian_scaling-0.1', 'fix-2_synth-1_min'): '10',
-    ('1-mse_2-V1_norm_s4_gaussian_scaling-0.5', 'fix-1_synth-2_max'): '1e8',
-    ('1-mse_2-V1_norm_s4_gaussian_scaling-0.5', 'fix-1_synth-2_min'): '1e3',
-    ('1-mse_2-V1_norm_s4_gaussian_scaling-0.5', 'fix-2_synth-1_max'): '1e3',
-    ('1-mse_2-V1_norm_s4_gaussian_scaling-0.5', 'fix-2_synth-1_min'): '10',
-    ('1-RGC_norm_gaussian_scaling-0.1_2-V1_norm_s4_gaussian_scaling-0.5', 'fix-1_synth-2_max'): '1e5',
-    ('1-RGC_norm_gaussian_scaling-0.1_2-V1_norm_s4_gaussian_scaling-0.5', 'fix-1_synth-2_min'): '1e2',
-    ('1-RGC_norm_gaussian_scaling-0.1_2-V1_norm_s4_gaussian_scaling-0.5', 'fix-2_synth-1_max'): '1e3',
-    ('1-RGC_norm_gaussian_scaling-0.1_2-V1_norm_s4_gaussian_scaling-0.5', 'fix-2_synth-1_min'): '10',
+    ('1-mse_2-RGC_norm_gaussian_scaling-0.1', 'fix-1_synth-2_max'): 1e3,
+    ('1-mse_2-RGC_norm_gaussian_scaling-0.1', 'fix-1_synth-2_min'): 1e2,
+    ('1-mse_2-RGC_norm_gaussian_scaling-0.1', 'fix-2_synth-1_max'): 1e3,
+    ('1-mse_2-RGC_norm_gaussian_scaling-0.1', 'fix-2_synth-1_min'): 10,
+    ('1-mse_2-V1_norm_s4_gaussian_scaling-0.5', 'fix-1_synth-2_max'): 1e8,
+    ('1-mse_2-V1_norm_s4_gaussian_scaling-0.5', 'fix-1_synth-2_min'): 1e3,
+    ('1-mse_2-V1_norm_s4_gaussian_scaling-0.5', 'fix-2_synth-1_max'): 1e3,
+    ('1-mse_2-V1_norm_s4_gaussian_scaling-0.5', 'fix-2_synth-1_min'): 10,
+    ('1-RGC_norm_gaussian_scaling-0.1_2-V1_norm_s4_gaussian_scaling-0.5', 'fix-1_synth-2_max'): 1e5,
+    ('1-RGC_norm_gaussian_scaling-0.1_2-V1_norm_s4_gaussian_scaling-0.5', 'fix-1_synth-2_min'): 1e2,
+    ('1-RGC_norm_gaussian_scaling-0.1_2-V1_norm_s4_gaussian_scaling-0.5', 'fix-2_synth-1_max'): 1e3,
+    ('1-RGC_norm_gaussian_scaling-0.1_2-V1_norm_s4_gaussian_scaling-0.5', 'fix-2_synth-1_min'): 10,
 }
 
 MAD_TRADEOFF = {
-    ('1-mse_2-RGC_norm_gaussian_scaling-0.1', 'fix-1_synth-2_max'): '1e4',
+    ('1-mse_2-RGC_norm_gaussian_scaling-0.1', 'fix-1_synth-2_max'): 1e4,
     ('1-mse_2-RGC_norm_gaussian_scaling-0.1', 'fix-1_synth-2_min'): None,
-    ('1-mse_2-RGC_norm_gaussian_scaling-0.1', 'fix-2_synth-1_max'): '10',
+    ('1-mse_2-RGC_norm_gaussian_scaling-0.1', 'fix-2_synth-1_max'): 10,
     ('1-mse_2-RGC_norm_gaussian_scaling-0.1', 'fix-2_synth-1_min'): None,
-    ('1-mse_2-V1_norm_s4_gaussian_scaling-0.5', 'fix-1_synth-2_max'): '1e10',
+    ('1-mse_2-V1_norm_s4_gaussian_scaling-0.5', 'fix-1_synth-2_max'): 1e10,
     ('1-mse_2-V1_norm_s4_gaussian_scaling-0.5', 'fix-1_synth-2_min'): None,
-    ('1-mse_2-V1_norm_s4_gaussian_scaling-0.5', 'fix-2_synth-1_max'): '1e-10',
-    ('1-mse_2-V1_norm_s4_gaussian_scaling-0.5', 'fix-2_synth-1_min'): '1e-12',
-    ('1-RGC_norm_gaussian_scaling-0.1_2-V1_norm_s4_gaussian_scaling-0.5', 'fix-1_synth-2_max'): '1e9',
+    ('1-mse_2-V1_norm_s4_gaussian_scaling-0.5', 'fix-2_synth-1_max'): 1e-10,
+    ('1-mse_2-V1_norm_s4_gaussian_scaling-0.5', 'fix-2_synth-1_min'): 1e-12,
+    ('1-RGC_norm_gaussian_scaling-0.1_2-V1_norm_s4_gaussian_scaling-0.5', 'fix-1_synth-2_max'): 1e9,
     ('1-RGC_norm_gaussian_scaling-0.1_2-V1_norm_s4_gaussian_scaling-0.5', 'fix-1_synth-2_min'): None,
-    ('1-RGC_norm_gaussian_scaling-0.1_2-V1_norm_s4_gaussian_scaling-0.5', 'fix-2_synth-1_max'): '5e-9',
-    ('1-RGC_norm_gaussian_scaling-0.1_2-V1_norm_s4_gaussian_scaling-0.5', 'fix-2_synth-1_min'): '1e-12',
+    ('1-RGC_norm_gaussian_scaling-0.1_2-V1_norm_s4_gaussian_scaling-0.5', 'fix-2_synth-1_max'): 5e-9,
+    ('1-RGC_norm_gaussian_scaling-0.1_2-V1_norm_s4_gaussian_scaling-0.5', 'fix-2_synth-1_min'): 1e-12,
 }
 
 # the above was all done with noise level of 20, so the following gives a
 # multiple to scale that up or down
-TRADEOFF_NOISE_SCALE = {'5': '1e2', '10': '1e1', '15': '1e1'}
+TRADEOFF_NOISE_SCALE = {'5': 100, '10': 10, '15': 10}
 
 # this is ugly, but it's easiest way to just replace the one format
 # target while leaving the others alone
@@ -726,11 +725,11 @@ def get_metamers(wildcards):
               f'V1_norm_s4_gaussian_scaling-{wildcards.V1_scaling}']
     metamers = []
     for model in models:
-        default_penalty = {'RGC': 1.5, 'V1': 1.5, 'VGG16': '1e3', 'PSTexture': '0.5'}[model.split('_')[0]]
+        default_penalty = {'RGC': 1.5, 'V1': 1.5, 'VGG16': 1e3, 'PSTexture': 0.5}[model.split('_')[0]]
         lr = .005 if model.startswith("VGG16") else .01
         ctf = {'V1': 'together', 'PSTexture': 'together'}.get(model.split('_')[0], False)
         ctf_iters = {'V1': 50, 'PSTexture': 15}.get(model.split('_')[0], None)
-        ctf_crit = '1e-4' if model.startswith("V1") else None
+        ctf_crit = 1e-4 if model.startswith("V1") else None
         max_iter = 15000 if model.startswith("V1") else 5000
         loss = 'l2' if model.startswith("PSTexture") else 'mse'
         for im in images:
@@ -814,13 +813,12 @@ def get_mad_images(wildcards):
         tradeoff_base = MAD_TRADEOFF.get((f'1-{model1}_2-{model2}',
                                           f'fix-{fix}_synth-{synth}_{target}'), None)
         penalty = MAD_RANGE_PENALTIES.get((f'1-{model1}_2-{model2}',
-                                           f'fix-{fix}_synth-{synth}_{target}'), '1e3')
+                                           f'fix-{fix}_synth-{synth}_{target}'), 1e3)
         for noise in noise_levels:
-            tradeoff_scale = TRADEOFF_NOISE_SCALE.get(noise, '1e0')
+            tradeoff_scale = TRADEOFF_NOISE_SCALE.get(noise, 1)
             tradeoff = tradeoff_base
             if tradeoff is not None:
-                e_value = int(tradeoff.split('e')[-1]) + int(tradeoff_scale.split('e')[-1])
-                tradeoff = f'{tradeoff.split("e")[0]}e{e_value}'
+                tradeoff *= tradeoff_scale
             mads.append(template_path.format(fix=fix, synth=synth, target=target,
                                              max_iter=max_iter, tradeoff=tradeoff,
                                              penalty=penalty, model_name_1=model1,
@@ -931,3 +929,4 @@ rule all_figures:
         op.join(config['DATA_DIR'], 'figures', 'paper', 'example_mad_1-RGC_norm_gaussian_scaling-0.1_2-V1_norm_s4_gaussian_scaling-0.5_img-checkerboard_period-64_range-.1,.9_size-256,256_init-20.svg'),
         op.join(config['DATA_DIR'], 'figures', 'paper', 'example_mad_1-RGC_norm_gaussian_scaling-0.1_2-V1_norm_s4_gaussian_scaling-0.5_img-einstein_size-256,256_init-20.svg'),
         op.join(config['DATA_DIR'], 'figures', 'paper', 'example_mad_1-RGC_norm_gaussian_scaling-0.1_2-V1_norm_s4_gaussian_scaling-0.5_img-reptil_skin_size-256,256_init-20.svg'),
+        op.join(config['DATA_DIR'], 'figures', 'paper', 'mad_noise_levels_RGC_norm_gaussian_scaling-0.1_img-checkerboard_period-64_range-.1,.9_size-256,256_noise-5,10,15,20,25,30.svg'),
