@@ -215,7 +215,7 @@ def mad_noise_levels_figure(ref_image, min_images, max_images, noise_levels,
     # label the noise along the top row, taking advantage of the fact that zip
     # stops when the shortest iterable runs out
     for ax, n in zip(fig.axes, noise_levels):
-        ax.set_title(f'Initial MSE: {int(n.square().item())}')
+        ax.set_title(f'MSE: {int(n.square().item())}')
     # want these to be the same size as the title
     for i, title in enumerate(['Initial image', f'Min {metric_name}',
                                f'Max {metric_name}']):
