@@ -12,6 +12,7 @@ import numpy as np
 import os.path as op
 import imageio
 import matplotlib as mpl
+import warnings
 
 
 def setup_metric(metric_name, image, min_ecc, max_ecc, cache_dir,
@@ -20,9 +21,11 @@ def setup_metric(metric_name, image, min_ecc, max_ecc, cache_dir,
 
     We initialize the metric, with the specified parameters.
 
-    `metric_name` must either specify a metric (currently: 'ssim' or 'mse') or
-    one of our foveated models. If a foveated model, it must be constructed of
-    several parts, for which you have several chocies:
+    `metric_name` must either specify a metric (currently: 'ssim' or 'mse'),
+    'PSTexture', 'VGG16_poolN' (where N is an int between 1 and 5) or one of
+    our foveated models. If a foveated model, it must be constructed of several
+    parts, for which you have several chocies:
+
     `'{visual_area}{options}_{window_type}_scaling-{scaling}'`:
     - `visual_area`: which visual area we're modeling.`'RGC'` (retinal
       ganglion cells, `plenoptic.simul.PooledRGC` class) or
@@ -52,6 +55,20 @@ def setup_metric(metric_name, image, min_ecc, max_ecc, cache_dir,
     are: `RGC_norm_gaussian_scaling-{scaling}`,
     `V1_norm_s6_gaussian_scaling-{scaling}` (pick whatever scaling value you
     like).
+
+    For the other metric_name choices:
+
+    - PSTexture: the Portilla-Simoncelli texture stats with n_scales=4,
+      n_orientations=4, spatial_corr_width=9, use_true_correlations=True
+
+    - VGG16_poolN: pretrained VGG16 from torchvision, through Nth max pooling
+      layer (where N is an int from 1 to 5)
+
+    If your metric_name corresponds to a model, then the metric is the MSE
+    between the representation of two images. We also call .mean() on the
+    output of that, since the output can be multi-channel if the input has
+    multiple channels. The exception to this is PSTexture, which only works on
+    single-channel inputs, and so will just fail in that case.
 
     Parameters
     ----------
@@ -105,9 +122,34 @@ def setup_metric(metric_name, image, min_ecc, max_ecc, cache_dir,
                 return po.metric.ssim(*args, weighted=True, pad='reflect', dynamic_range=255)
             metric = ssim
         elif metric_name == 'mse':
-            metric = po.metric.mse
+            # if our input image has multiple channels (e.g., is RGB), we'll
+            # have a separate value for each channel, so this averages that
+            # into a single value
+            def mse_avg_channel(x1, x2):
+                return po.metric.mse(x1, x2).mean()
+            metric = mse_avg_channel
         model = None
-    else:
+    elif metric_name == 'PSTexture':
+        model = create_metamers.setup_model(metric_name, image, min_ecc,
+                                            max_ecc, cache_dir, normalize_dict)
+        model = create_metamers.setup_device(model, gpu_id=gpu_id)[0]
+        # we don't average the output of this metric (unlike the rest) because
+        # the PSTexture model only operates on single-channel images (thus, we
+        # can't run it against VGG16)
+        def ps_texture_metric(x1, x2):
+            return po.metric.mse(model(x1), model(x2))
+        metric = ps_texture_metric
+    elif 'VGG16' in metric_name:
+        model = create_metamers.setup_model(metric_name, image, min_ecc,
+                                            max_ecc, cache_dir, normalize_dict)
+        model = create_metamers.setup_device(model, gpu_id=gpu_id)[0]
+        def vgg16_metric(x1, x2):
+            # this will have a value for each channel in the output (128 for
+            # pool2, 256 for pool3, 512 for pool3 or pool4) and we need a
+            # single number, so we average them.
+            return po.metric.mse(model(x1), model(x2)).mean()
+        metric = vgg16_metric
+    elif 'scaling' in metric_name:
         model = create_metamers.setup_model(metric_name, image,
                                             min_ecc, max_ecc, cache_dir,
                                             normalize_dict)
@@ -115,15 +157,19 @@ def setup_metric(metric_name, image, min_ecc, max_ecc, cache_dir,
         # do this because we want the metric name to reflect which model we're
         # using. We'll never be comparing the same model family against itself
         # (e.g., two V1 models with different scaling), so we just use visual
-        # area tag
+        # area tag. also, if our input image has multiple channels (e.g., is
+        # RGB), we'll have a separate value for each channel, so this averages
+        # that into a single value
         if metric_name.startswith('RGC'):
             def fov_rgc_metric(x1, x2):
-                return po.metric.mse(model(x1), model(x2))
+                return po.metric.mse(model(x1), model(x2)).mean()
             metric = fov_rgc_metric
         elif metric_name.startswith('V1'):
             def fov_v1_metric(x1, x2):
-                return po.metric.mse(model(x1), model(x2))
+                return po.metric.mse(model(x1), model(x2)).mean()
             metric = fov_v1_metric
+    else:
+        raise Exception(f"Don't know how to handle metric {metric_name}!")
     return metric, model
 
 
@@ -193,9 +239,17 @@ def plot_image_diff(mad, fix_model=None, synthesis_model=None):
 
     """
     if fix_model is not None:
-        fix_full, fix_half = _get_min_window_ecc(fix_model)
+        if not hasattr(fix_model, 'PoolingWindows'):
+            warnings.warn('fix_model has no PoolingWindows attribute')
+            fix_model = None
+        else:
+            fix_full, fix_half = _get_min_window_ecc(fix_model)
     if synthesis_model is not None:
-        synthesis_full, synthesis_half = _get_min_window_ecc(synthesis_model)
+        if not hasattr(synthesis_model, 'PoolingWindows'):
+            warnings.warn('synthesis_model has no PoolingWindows attribute')
+            synthesis_model = None
+        else:
+            synthesis_full, synthesis_half = _get_min_window_ecc(synthesis_model)
     # as of Nov 30, 2021, this isn't handled by MADCompetition.to()
     initial_image = mad.initial_signal.to('cpu')
     imgs = [mad.reference_signal, mad.synthesized_signal,
@@ -292,6 +346,10 @@ def save(save_path, mad, fix_model=None, synthesis_model=None):
     print("Saving mad float32 array at %s" % mad_path.replace('.png', '.npy'))
     np.save(mad_path.replace('.png', '.npy'), mad_image)
     print("Saving mad image at %s" % mad_path)
+    if mad_image.ndim == 3:
+        # then this is an RGB, from the VGG16 models, and we want to move the
+        # channels dim to the last dimension
+        mad_image = mad_image.transpose(1, 2, 0)
     # this already lies between 0 and 255, so we convert it to ints
     imageio.imwrite(mad_path, mad_image.astype(np.uint8))
     synthesis_path = op.splitext(save_path)[0] + "_synthesis.png"
@@ -315,9 +373,9 @@ def main(fix_metric_name, synthesis_metric_name, image, synthesis_target,
     r"""Create MAD images.
 
     `fix_metric_name` and `synthesis_metric_name` must either specify a metric
-    (currently: 'ssim' or 'mse') or one of our foveated models. If a foveated
-    model, it must be constructed of several parts, for which you have several
-    chocies:
+    (currently: 'ssim' or 'mse'), 'PSTexture', 'VGG16_poolN' (where N is an int
+    between 1 and 5) or one of our foveated models. If a foveated model, it
+    must be constructed of several parts, for which you have several choices:
     `'{visual_area}{options}_{window_type}_scaling-{scaling}'`:
     - `visual_area`: which visual area we're modeling.`'RGC'` (retinal
       ganglion cells, `plenoptic.simul.PooledRGC` class) or
@@ -343,11 +401,24 @@ def main(fix_metric_name, synthesis_metric_name, image, synthesis_target,
       have fewer aliasing issues.
     - `scaling`: float giving the scaling values of these models
 
-    The recommended model_name values are:
-    `RGC_norm_gaussian_scaling-{scaling}` and
-    `V1_norm_s6_gaussian_scaling-{scaling}` (pick whatever scaling value ou
-    like). If one of our foveated models is specified, the corresponding metric
-    is the MSE between the representation of two images.
+    The recommended metric_name values that correspond to our foveated models
+    are: `RGC_norm_gaussian_scaling-{scaling}`,
+    `V1_norm_s6_gaussian_scaling-{scaling}` (pick whatever scaling value you
+    like).
+
+    For the other metric_name choices:
+
+    - PSTexture: the Portilla-Simoncelli texture stats with n_scales=4,
+      n_orientations=4, spatial_corr_width=9, use_true_correlations=True
+
+    - VGG16_poolN: pretrained VGG16 from torchvision, through Nth max pooling
+      layer (where N is an int from 1 to 5)
+
+    If your metric_name corresponds to a model, then the metric is the MSE
+    between the representation of two images. We also call .mean() on the
+    output of that, since the output can be multi-channel if the input has
+    multiple channels. The exception to this is PSTexture, which only works on
+    single-channel inputs, and so will just fail in that case.
 
     If you want to resume synthesis from an earlier run that didn't
     finish, set `continue_path` to the path of the `.pt` file created by
@@ -447,7 +518,8 @@ def main(fix_metric_name, synthesis_metric_name, image, synthesis_target,
               f"available ({torch.get_num_threads()})")
     po.tools.set_seed(seed)
     # for this, we want the images to be between 0 and 255
-    image = 255 * create_metamers.setup_image(image)
+    image = 255 * create_metamers.setup_image(image,
+                                              3 if ('VGG16' in fix_metric_name or 'VGG16' in synthesis_metric_name) else 1)
     print(f"Using initial noise level {initial_image}")
     # this will be false if normalize_dict is None or an empty list
     if fix_metric_normalize_dict:
