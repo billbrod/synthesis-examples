@@ -948,7 +948,9 @@ rule mad_noise_levels_figure:
                                                             max_images,
                                                             noise_levels,
                                                             model_name,
-                                                            vrange=(0, 255))
+                                                            # if rescale is True, vrange should be (0, 1)
+                                                            vrange=(0, 1),
+                                                            rescale=True)
                 fig.savefig(output[0], bbox_inches='tight', dpi=fig.dpi)
 
 
