@@ -74,6 +74,13 @@ MAD_TRADEOFF = {
     ('1-RGC_norm_gaussian_scaling-0.1_2-V1_norm_s4_gaussian_scaling-0.5', 'fix-1_synth-2_max'): 1e9,
     ('1-RGC_norm_gaussian_scaling-0.1_2-V1_norm_s4_gaussian_scaling-0.5', 'fix-2_synth-1_max'): 5e-9,
     ('1-RGC_norm_gaussian_scaling-0.1_2-V1_norm_s4_gaussian_scaling-0.5', 'fix-2_synth-1_min'): 1e-12,
+    ('1-mse_2-PSTexture', 'fix-1_synth-2_max'): 1e3,
+    ('1-mse_2-PSTexture', 'fix-2_synth-1_max'): 1e2,
+    ('1-RGC_norm_gaussian_scaling-0.1_2-PSTexture', 'fix-1_synth-2_max'): 1e1,
+    ('1-RGC_norm_gaussian_scaling-0.1_2-PSTexture', 'fix-2_synth-1_max'): 5e4,
+    ('1-mse_2-VGG16_pool3', 'fix-1_synth-2_max'): 1e5,
+    ('1-RGC_norm_gaussian_scaling-0.1_2-VGG16_pool3', 'fix-1_synth-2_max'): 1e3,
+    ('1-RGC_norm_gaussian_scaling-0.1_2-VGG16_pool3', 'fix-2_synth-1_max'): 1e1,
 }
 
 # the above was all done with noise level of 20, so the following gives a
@@ -827,7 +834,7 @@ def get_mad_images(wildcards):
         tradeoff_base = MAD_TRADEOFF.get((f'1-{model1}_2-{model2}',
                                           f'fix-{fix}_synth-{synth}_{target}'), None)
         penalty = MAD_RANGE_PENALTIES.get((f'1-{model1}_2-{model2}',
-                                           f'fix-{fix}_synth-{synth}_{target}'), 1e3)
+                                           f'fix-{fix}_synth-{synth}_{target}'), 1e0)
         for noise in noise_levels:
             tradeoff_scale = TRADEOFF_NOISE_SCALE.get(noise, 1)
             tradeoff = tradeoff_base
@@ -959,3 +966,5 @@ rule all_figures:
         op.join(config['DATA_DIR'], 'figures', 'paper', 'mad_noise_levels_V1_norm_s4_gaussian_scaling-0.5_img-checkerboard_period-64_range-.1,.9_size-256,256_noise-5,10,15,20,25,30.svg'),
         op.join(config['DATA_DIR'], 'figures', 'paper', 'mad_noise_levels_V1_norm_s4_gaussian_scaling-0.5_img-einstein_size-256,256_noise-5,10,15,20,25,30.svg'),
         op.join(config['DATA_DIR'], 'figures', 'paper', 'mad_noise_levels_V1_norm_s4_gaussian_scaling-0.5_img-reptil_skin_size-256,256_noise-5,10,15,20,25,30.svg'),
+        op.join(config['DATA_DIR'], 'figures', 'paper', 'example_mad_1-mse_2-VGG16_pool3_img-einstein_size-256,256_init-20.svg'),
+        op.join(config['DATA_DIR'], 'figures', 'paper', 'example_mad_1-RGC_norm_gaussian_scaling-0.1_2-VGG16_pool3_img-einstein_size-256,256_init-20.svg'),
