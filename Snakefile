@@ -87,6 +87,10 @@ MAD_TRADEOFF = {
     ('1-V1_norm_s4_gaussian_scaling-0.5_2-PSTexture', 'fix-1_synth-2_max'): 1e-10,
     ('1-V1_norm_s4_gaussian_scaling-0.5_2-PSTexture', 'fix-1_synth-2_min'): 1e-11,
     ('1-V1_norm_s4_gaussian_scaling-0.5_2-PSTexture', 'fix-2_synth-1_max'): 5e10,
+    ('1-l1_norm_2-l2_norm', 'fix-1_synth-2_max'): 1e-4,
+    ('1-l1_norm_2-l2_norm', 'fix-1_synth-2_min'): 1e-4,
+    ('1-l1_norm_2-l2_norm', 'fix-2_synth-1_max'): 1e2,
+    ('1-l1_norm_2-l2_norm', 'fix-2_synth-1_min'): 1e3,
 }
 
 # the above was all done with noise level of 20, so the following gives a
@@ -396,7 +400,7 @@ rule cache_windows:
 def get_norm_dict(wildcards):
     # this is for metamers
     try:
-        if 'norm' in wildcards.model_name:
+        if 'norm' in wildcards.model_name and 'scaling' in wildcards.model_name:
             preproc = ''
             # lienar images should also use the degamma'd textures
             if 'degamma' in wildcards.image_name:
@@ -408,14 +412,14 @@ def get_norm_dict(wildcards):
     # this is for MAD images
     except AttributeError:
         norm_dicts = []
-        if 'norm' in wildcards.model_name_1:
+        if 'norm' in wildcards.model_name_1 and 'scaling' in wildcards.model_name_1:
             preproc = ''
             # lienar images should also use the degamma'd textures
             if 'degamma' in wildcards.image_name:
                 preproc += '_degamma'
             norm_dicts.append(op.join(config['DATA_DIR'], 'norm_stats', f'V1_texture{preproc}'
                                       '_norm_stats.pt'))
-        if 'norm' in wildcards.model_name_2:
+        if 'norm' in wildcards.model_name_2 and 'scaling' in wildcards.model_name_2:
             preproc = ''
             # lienar images should also use the degamma'd textures
             if 'degamma' in wildcards.image_name:
@@ -697,11 +701,11 @@ rule create_mad_images:
                 except ValueError:
                     tradeoff_lambda = None
                 fix_norm_dict, synth_norm_dict = None, None
-                if 'norm' in fix_model_name:
+                if 'norm' in fix_model_name and 'scaling' in fix_model_name:
                     fix_norm_dict = input.norm_dict[0]
-                    if 'norm' in synth_model_name:
+                    if 'norm' in synth_model_name and 'scaling' in synth_model_name:
                         synth_norm_dict = input.norm_dict[1]
-                elif 'norm' in synth_model_name:
+                elif 'norm' in synth_model_name and 'scaling' in synth_model_name:
                     synth_norm_dict = input.norm_dict[0]
                 with synth.utils.get_gpu_id(get_gid, on_cluster=ON_CLUSTER) as gpu_id:
                     synth.create_mad_images.main(fix_model_name,
