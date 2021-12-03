@@ -982,3 +982,6 @@ rule all_figures:
         op.join(config['DATA_DIR'], 'figures', 'paper', 'example_mad_1-V1_norm_s4_gaussian_scaling-0.5_2-PSTexture_img-einstein_size-256,256_init-20.svg'),
         op.join(config['DATA_DIR'], 'figures', 'paper', 'mad_noise_levels_VGG16_pool3_img-einstein_size-256,256_noise-5,10,15,20,25,30.svg'),
         op.join(config['DATA_DIR'], 'figures', 'paper', 'mad_noise_levels_VGG16_pool3_img-checkerboard_period-64_range-.1,.9_size-256,256_noise-5,10,15,20,25,30.svg'),
+        op.join(config['DATA_DIR'], 'figures', 'paper', 'example_mad_1-l1_norm_2-l2_norm_img-einstein_size-256,256_init-20.svg'),
+        op.join(config['DATA_DIR'], 'figures', 'paper', 'example_mad_1-l1_norm_2-l2_norm_img-reptil_skin_size-256,256_init-20.svg'),
+        op.join(config['DATA_DIR'], 'figures', 'paper', 'example_mad_1-l1_norm_2-l2_norm_img-checkerboard_period-64_range-.1,.9_size-256,256_init-20.svg'),
