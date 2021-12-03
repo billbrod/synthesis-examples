@@ -22,10 +22,10 @@ def setup_metric(metric_name, image, min_ecc=None, max_ecc=None,
 
     We initialize the metric, with the specified parameters.
 
-    `metric_name` must either specify a metric (currently: 'ssim' or 'mse'),
-    'PSTexture', 'VGG16_poolN' (where N is an int between 1 and 5) or one of
-    our foveated models. If a foveated model, it must be constructed of several
-    parts, for which you have several chocies:
+    `metric_name` must either specify a metric (currently: 'ssim', 'mse',
+    'l1_norm', 'l2_norm'), 'PSTexture', 'VGG16_poolN' (where N is an int
+    between 1 and 5) or one of our foveated models. If a foveated model, it
+    must be constructed of several parts, for which you have several chocies:
 
     `'{visual_area}{options}_{window_type}_scaling-{scaling}'`:
     - `visual_area`: which visual area we're modeling.`'RGC'` (retinal
@@ -117,7 +117,7 @@ def setup_metric(metric_name, image, min_ecc=None, max_ecc=None,
         this is None.
 
     """
-    if metric_name in ['ssim', 'mse']:
+    if metric_name in ['ssim', 'mse', 'l1_norm', 'l2_norm']:
         if metric_name == 'ssim':
             def ssim(*args):
                 return po.metric.ssim(*args, weighted=True, pad='reflect', dynamic_range=255)
@@ -129,6 +129,20 @@ def setup_metric(metric_name, image, min_ecc=None, max_ecc=None,
             def mse_avg_channel(x1, x2):
                 return po.metric.mse(x1, x2).mean()
             metric = mse_avg_channel
+        elif metric_name == 'l2_norm':
+            # if our input image has multiple channels (e.g., is RGB), we'll
+            # have a separate value for each channel, so this averages that
+            # into a single value
+            def l2_norm_avg_channel(x1, x2):
+                return po.tools.optim.l2_norm(x1, x2).mean()
+            metric = l2_norm_avg_channel
+        elif metric_name == 'l1_norm':
+            # if our input image has multiple channels (e.g., is RGB), we'll
+            # have a separate value for each channel, so this averages that
+            # into a single value
+            def l1_norm_avg_channel(x1, x2):
+                return torch.norm(x1-x2, 1).mean()
+            metric = l1_norm_avg_channel
         model = None
     elif metric_name == 'PSTexture':
         model = create_metamers.setup_model(metric_name, image, min_ecc,
@@ -412,9 +426,10 @@ def main(fix_metric_name, synthesis_metric_name, image, synthesis_target,
     r"""Create MAD images.
 
     `fix_metric_name` and `synthesis_metric_name` must either specify a metric
-    (currently: 'ssim' or 'mse'), 'PSTexture', 'VGG16_poolN' (where N is an int
-    between 1 and 5) or one of our foveated models. If a foveated model, it
-    must be constructed of several parts, for which you have several choices:
+    (currently: 'ssim', 'mse', 'l1_norm', 'l2_norm'), 'PSTexture',
+    'VGG16_poolN' (where N is an int between 1 and 5) or one of our foveated
+    models. If a foveated model, it must be constructed of several parts, for
+    which you have several choices:
     `'{visual_area}{options}_{window_type}_scaling-{scaling}'`:
     - `visual_area`: which visual area we're modeling.`'RGC'` (retinal
       ganglion cells, `plenoptic.simul.PooledRGC` class) or
@@ -569,7 +584,7 @@ def main(fix_metric_name, synthesis_metric_name, image, synthesis_target,
                                          max_ecc, cache_dir,
                                          fix_metric_normalize_dict, gpu_id)
     fix_metric_str = f"Using fix metric {fix_metric_name}"
-    if fix_metric_name not in ['mse', 'ssim']:
+    if 'RGC' in fix_metric_name or 'V1' in fix_metric_name:
         fix_metric_str += f" from {min_ecc} degrees to {max_ecc} degrees"
     synthesis_metric, synthesis_model = setup_metric(synthesis_metric_name,
                                                      image, min_ecc, max_ecc,
@@ -577,7 +592,7 @@ def main(fix_metric_name, synthesis_metric_name, image, synthesis_target,
                                                      synthesis_metric_normalize_dict,
                                                      gpu_id)
     synthesis_metric_str = f"Will {synthesis_target} synthesis metric {synthesis_metric_name}"
-    if synthesis_metric_name not in ['mse', 'ssim']:
+    if 'RGC' in synthesis_metric_name or 'V1' in synthesis_metric_name:
         synthesis_metric_str += f" from {min_ecc} degrees to {max_ecc} degrees"
     print(synthesis_metric_str)
     print(fix_metric_str)
