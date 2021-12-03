@@ -893,7 +893,7 @@ rule example_mad_figure:
                 model_name_2 = synth.figures.remap_model_name(wildcards.model_name_2)
                 fig = synth.figures.example_mad_figure(*imgs.unsqueeze(1),
                                                        model_name_1, model_name_2,
-                                                       vrange=(0, 255),
+                                                       vrange=(0, 1),
                                                        noise_level=float(wildcards.init_type))
                 fig.savefig(output[0], bbox_inches='tight', dpi=fig.dpi)
 

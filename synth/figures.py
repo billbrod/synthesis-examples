@@ -3,6 +3,7 @@ import plenoptic as po
 import torch
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+import warnings
 
 
 def remap_model_name(model_name):
@@ -61,7 +62,7 @@ def _add_initial_noise(img, initial_noise, seed=0, allowed_range=(0, 255)):
 def example_mad_figure(ref_image, image_metric1_min, image_metric1_max,
                        image_metric2_min, image_metric2_max, metric1_name,
                        metric2_name, noise_seed=0, noise_level=20,
-                       vrange=(0, 255)):
+                       vrange=(0, 1), rescale=True):
     """Create a figure showing example MAD images for a single model.
 
     This looks like Figure 8 from [1]_, except that we have a small inset
@@ -84,6 +85,14 @@ def example_mad_figure(ref_image, image_metric1_min, image_metric1_max,
     vrange : tuple or str
         Vrange to pass to imshow for the main images (all difference images are
         plotted with 'indep0'). See docstring of pyrtools.imshow for details.
+    rescale : bool, optional
+        We have an issue with plotting color images with values between 0 and
+        255 (matplotlib automatically clips them), so if rescale is True, we
+        divide by 255 before plotting each image (make sure vrange is
+        appropriately set then!). We do that within the function, rather than
+        expecting the user to pass those images to us, because the images
+        probably need to lie between 0 and 255 for the generating of the
+        initial image.
 
     Returns
     -------
@@ -124,14 +133,24 @@ def example_mad_figure(ref_image, image_metric1_min, image_metric1_max,
                      fig.add_subplot(gs[3:4, 9:10], **ax_kwargs),
                      fig.add_subplot(gs[3:4, 0:1], **ax_kwargs)]
     # plot the images
-    po.imshow(ref_image, ax=ref_ax, zoom=1, title=None, vrange=vrange)
-    po.imshow(initial_img, ax=init_ax, zoom=1, title=None, vrange=vrange)
+    if rescale:
+        ref_image = ref_image / 255
+        initial_img = initial_img / 255
+    po.imshow(ref_image, ax=ref_ax, zoom=1, title=None, vrange=vrange,
+              as_rgb=True if ref_image.shape[1] == 3 else False)
+    po.imshow(initial_img, ax=init_ax, zoom=1, title=None, vrange=vrange,
+              as_rgb=True if initial_img.shape[1] == 3 else False)
     images = [image_metric1_min, image_metric1_max, image_metric2_min,
               image_metric2_max]
     for im, ax, diff_ax in zip(images, mad_axes, mad_diff_axes):
-        po.imshow(im, ax=ax, zoom=1, title=None, vrange=vrange)
-        po.imshow(im-ref_image, ax=diff_ax, zoom=.5, title=None,
-                  vrange='indep0')
+        if rescale:
+            im = im / 255
+        print(im.min(), im.max(), vrange)
+        po.imshow(im, ax=ax, zoom=1, title=None, vrange=vrange,
+                  as_rgb=True if im.shape[1] == 3 else False)
+        # average over the channels so we only have a single image to plot
+        po.imshow((im-ref_image).mean(1, True), ax=diff_ax, zoom=.5,
+                  title=None, vrange='indep0')
     ref_ax.set_title("Reference image")
     ref_ax.annotate('', xytext=(1, .25), xy=(2.2, -.6),
                     xycoords='axes fraction',
