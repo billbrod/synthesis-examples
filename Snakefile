@@ -81,6 +81,12 @@ MAD_TRADEOFF = {
     ('1-mse_2-VGG16_pool3', 'fix-1_synth-2_max'): 1e5,
     ('1-RGC_norm_gaussian_scaling-0.1_2-VGG16_pool3', 'fix-1_synth-2_max'): 1e3,
     ('1-RGC_norm_gaussian_scaling-0.1_2-VGG16_pool3', 'fix-2_synth-1_max'): 1e1,
+    ('1-VGG16_pool3_2-V1_norm_s4_gaussian_scaling-0.5', 'fix-1_synth-2_max'): 1e6,
+    ('1-VGG16_pool3_2-V1_norm_s4_gaussian_scaling-0.5', 'fix-2_synth-1_max'): 1e-8,
+    ('1-VGG16_pool3_2-V1_norm_s4_gaussian_scaling-0.5', 'fix-2_synth-1_min'): 1e-10,
+    ('1-V1_norm_s4_gaussian_scaling-0.5_2-PSTexture', 'fix-1_synth-2_max'): 1e-10,
+    ('1-V1_norm_s4_gaussian_scaling-0.5_2-PSTexture', 'fix-1_synth-2_min'): 1e-11,
+    ('1-V1_norm_s4_gaussian_scaling-0.5_2-PSTexture', 'fix-2_synth-1_max'): 5e10,
 }
 
 # the above was all done with noise level of 20, so the following gives a
@@ -967,4 +973,10 @@ rule all_figures:
         op.join(config['DATA_DIR'], 'figures', 'paper', 'mad_noise_levels_V1_norm_s4_gaussian_scaling-0.5_img-einstein_size-256,256_noise-5,10,15,20,25,30.svg'),
         op.join(config['DATA_DIR'], 'figures', 'paper', 'mad_noise_levels_V1_norm_s4_gaussian_scaling-0.5_img-reptil_skin_size-256,256_noise-5,10,15,20,25,30.svg'),
         op.join(config['DATA_DIR'], 'figures', 'paper', 'example_mad_1-mse_2-VGG16_pool3_img-einstein_size-256,256_init-20.svg'),
+        op.join(config['DATA_DIR'], 'figures', 'paper', 'example_mad_1-mse_2-VGG16_pool3_img-reptil_skin_size-256,256_init-20.svg'),
+        op.join(config['DATA_DIR'], 'figures', 'paper', 'example_mad_1-mse_2-VGG16_pool3_img-checkerboard_period-64_range-.1,.9_size-256,256_init-20.svg'),
         op.join(config['DATA_DIR'], 'figures', 'paper', 'example_mad_1-RGC_norm_gaussian_scaling-0.1_2-VGG16_pool3_img-einstein_size-256,256_init-20.svg'),
+        op.join(config['DATA_DIR'], 'figures', 'paper', 'example_mad_1-VGG16_pool3_2-V1_norm_s4_gaussian_scaling-0.5_img-einstein_size-256,256_init-20.svg'),
+        op.join(config['DATA_DIR'], 'figures', 'paper', 'example_mad_1-V1_norm_s4_gaussian_scaling-0.5_2-PSTexture_img-einstein_size-256,256_init-20.svg'),
+        op.join(config['DATA_DIR'], 'figures', 'paper', 'mad_noise_levels_VGG16_pool3_img-einstein_size-256,256_noise-5,10,15,20,25,30.svg'),
+        op.join(config['DATA_DIR'], 'figures', 'paper', 'mad_noise_levels_VGG16_pool3_img-checkerboard_period-64_range-.1,.9_size-256,256_noise-5,10,15,20,25,30.svg'),
