@@ -180,7 +180,8 @@ def example_mad_figure(ref_image, image_metric1_min, image_metric1_max,
 
 
 def mad_noise_levels_figure(ref_image, min_images, max_images, noise_levels,
-                            metric_name, noise_seed=0, vrange=(0, 255)):
+                            metric_name, noise_seed=0, vrange=(0, 1),
+                            rescale=True):
     """Create figure showing synthesized mad images for different noise levels.
 
     Note that these should be one half of a full MAD set, that is, they should
@@ -209,6 +210,14 @@ def mad_noise_levels_figure(ref_image, min_images, max_images, noise_levels,
     vrange : tuple or str
         Vrange to pass to imshow for the main images (all difference images are
         plotted with 'indep0'). See docstring of pyrtools.imshow for details.
+    rescale : bool, optional
+        We have an issue with plotting color images with values between 0 and
+        255 (matplotlib automatically clips them), so if rescale is True, we
+        divide by 255 before plotting each image (make sure vrange is
+        appropriately set then!). We do that within the function, rather than
+        expecting the user to pass those images to us, because the images
+        probably need to lie between 0 and 255 for the generating of the
+        initial image.
 
     Returns
     -------
@@ -225,12 +234,19 @@ def mad_noise_levels_figure(ref_image, min_images, max_images, noise_levels,
     """
     assert len(max_images) == len(min_images) and len(max_images) == len(noise_levels)
     assert noise_levels.ndim == 4, "noise_levels must be a 4d tensor or torch's implicit reshaping won't work!"
+    # if ref image is RGB, then they all will be
+    as_rgb = True if ref_image.shape[1] == 3 else False
     # this will add the varying noise levels all to a single sample of noise,
     # but this is what's done in for this synthesis (they all used the same
     # seed)
     initial_images = _add_initial_noise(ref_image, noise_levels, noise_seed)
+    if rescale:
+        initial_images = initial_images / 255
+        min_images = min_images / 255
+        max_images = max_images / 255
     fig = po.imshow([initial_images, min_images, max_images],
-                    col_wrap=len(noise_levels), vrange=vrange, title=None)
+                    col_wrap=len(noise_levels), vrange=vrange, title=None,
+                    as_rgb=as_rgb)
     # label the noise along the top row, taking advantage of the fact that zip
     # stops when the shortest iterable runs out
     for ax, n in zip(fig.axes, noise_levels):
