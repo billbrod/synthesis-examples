@@ -870,11 +870,11 @@ rule example_mad_figure:
         get_ref_image,
         get_mad_images,
     output:
-        op.join(config['DATA_DIR'], 'figures', '{context}', 'example_mad_1-{model_name_1}_2-{model_name_2}_img-{image_name}_init-{init_type}.svg'),
+        op.join(config['DATA_DIR'], 'figures', '{context}', 'example_mad_1-{model_name_1}_2-{model_name_2}_img-{image_name}_init-{init_type}_annot-{annot}.svg'),
     log:
-        op.join(config['DATA_DIR'], 'logs', 'figures', '{context}', 'example_mad_1-{model_name_1}_2-{model_name_2}_img-{image_name}_init-{init_type}.log'),
+        op.join(config['DATA_DIR'], 'logs', 'figures', '{context}', 'example_mad_1-{model_name_1}_2-{model_name_2}_img-{image_name}_init-{init_type}_annot-{annot}.log'),
     benchmark:
-        op.join(config['DATA_DIR'], 'logs', 'figures', '{context}', 'example_mad_1-{model_name_1}_2-{model_name_2}_img-{image_name}_init-{init_type}_benchmark.txt'),
+        op.join(config['DATA_DIR'], 'logs', 'figures', '{context}', 'example_mad_1-{model_name_1}_2-{model_name_2}_img-{image_name}_init-{init_type}_annot-{annot}_benchmark.txt'),
     run:
         import synth
         import contextlib
@@ -901,10 +901,12 @@ rule example_mad_figure:
                 imgs = 255 * torch.cat(imgs)
                 model_name_1 = synth.figures.remap_model_name(wildcards.model_name_1)
                 model_name_2 = synth.figures.remap_model_name(wildcards.model_name_2)
+                annotate = True if wildcards.annot == "True" else False
                 fig = synth.figures.example_mad_figure(*imgs.unsqueeze(1),
                                                        model_name_1, model_name_2,
                                                        vrange=(0, 1),
-                                                       noise_level=float(wildcards.init_type))
+                                                       noise_level=float(wildcards.init_type),
+                                                       annotate=annotate)
                 fig.savefig(output[0], bbox_inches='tight', dpi=fig.dpi)
 
 
@@ -955,6 +957,28 @@ rule mad_noise_levels_figure:
                                                             # if rescale is True, vrange should be (0, 1)
                                                             vrange=(0, 1),
                                                             rescale=True)
+                fig.savefig(output[0], bbox_inches='tight', dpi=fig.dpi)
+
+
+rule simple_mad_level_set_figure:
+    output:
+        op.join(config['DATA_DIR'], 'figures', '{context}', 'simple_mad_level_set_seed-{seed}.svg')
+    log:
+        op.join(config['DATA_DIR'], 'logs', 'figures', '{context}', 'simple_mad_level_set_seed-{seed}.log')
+    benchmark:
+        op.join(config['DATA_DIR'], 'logs', 'figures', '{context}', 'simple_mad_level_set_seed-{seed}_benchmark.txt')
+    run:
+        import synth
+        import contextlib
+        import matplotlib as mpl
+        import matplotlib.pyplot as plt
+        with open(log[0], 'w', buffering=1) as log_file:
+            with contextlib.redirect_stdout(log_file), contextlib.redirect_stderr(log_file):
+                style, _ = synth.style.plotting_style(wildcards.context)
+                # need to explicitly call mpl.use to change the backend
+                mpl.use(style['backend'])
+                plt.style.use(style)
+                fig = synth.figures.simple_mad_level_set(int(wildcards.seed))
                 fig.savefig(output[0], bbox_inches='tight', dpi=fig.dpi)
 
 
