@@ -3,7 +3,8 @@ import plenoptic as po
 import torch
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-import warnings
+import itertools
+import numpy as np
 
 
 def remap_model_name(model_name):
@@ -49,6 +50,14 @@ def example_metamer_figure(ref_images, vrange=(0, 1), **kwargs):
                     as_rgb=True, zoom=1)
     for ax, title in zip(fig.axes[:col_wrap], titles):
         ax.set_title(title)
+    # this is the space between axes
+    space = 10 / imgs[0].shape[-1]
+    # this line separates the target image axes from the metamer axes, all the
+    # way across the figure
+    line = mpl.lines.Line2D([1+.5*space, 1+.5*space], [1+3*space, -2-3*space],
+                            color='k',
+                            transform=fig.axes[0].transAxes)
+    fig.add_artist(line)
     return fig
 
 
@@ -62,7 +71,7 @@ def _add_initial_noise(img, initial_noise, seed=0, allowed_range=(0, 255)):
 def example_mad_figure(ref_image, image_metric1_min, image_metric1_max,
                        image_metric2_min, image_metric2_max, metric1_name,
                        metric2_name, noise_seed=0, noise_level=20,
-                       vrange=(0, 1), rescale=True):
+                       vrange=(0, 1), rescale=True, annotate=False):
     """Create a figure showing example MAD images for a single model.
 
     This looks like Figure 8 from [1]_, except that we have a small inset
@@ -93,6 +102,9 @@ def example_mad_figure(ref_image, image_metric1_min, image_metric1_max,
         expecting the user to pass those images to us, because the images
         probably need to lie between 0 and 255 for the generating of the
         initial image.
+    annotate : bool, optional
+        If True, add boxes around the MAD axes that match the colors used in
+        the plenoptic simple MAD example notebook.
 
     Returns
     -------
@@ -124,14 +136,18 @@ def example_mad_figure(ref_image, image_metric1_min, image_metric1_max,
     # create all the axes
     ref_ax = fig.add_subplot(gs[:2, :2], **ax_kwargs)
     init_ax = fig.add_subplot(gs[3:5, 4:6], **ax_kwargs)
-    mad_axes = [fig.add_subplot(gs[:2, 4:6], **ax_kwargs),
-                fig.add_subplot(gs[-2:, 4:6], **ax_kwargs),
-                fig.add_subplot(gs[3:5, 7:9], **ax_kwargs),
-                fig.add_subplot(gs[3:5, 1:3], **ax_kwargs)]
-    mad_diff_axes = [fig.add_subplot(gs[:1, 6:7], **ax_kwargs),
-                     fig.add_subplot(gs[-2:-1, 3:4], **ax_kwargs),
-                     fig.add_subplot(gs[3:4, 9:10], **ax_kwargs),
-                     fig.add_subplot(gs[3:4, 0:1], **ax_kwargs)]
+    mad_axes = [
+        fig.add_subplot(gs[3:5, 1:3], **ax_kwargs),
+        fig.add_subplot(gs[3:5, 7:9], **ax_kwargs),
+        fig.add_subplot(gs[:2, 4:6], **ax_kwargs),
+        fig.add_subplot(gs[-2:, 4:6], **ax_kwargs),
+    ]
+    mad_diff_axes = [
+        fig.add_subplot(gs[3:4, 0:1], **ax_kwargs),
+        fig.add_subplot(gs[3:4, 9:10], **ax_kwargs),
+        fig.add_subplot(gs[:1, 3:4], **ax_kwargs),
+        fig.add_subplot(gs[-2:-1, 6:7], **ax_kwargs),
+    ]
     # plot the images
     if rescale:
         ref_image = ref_image / 255
@@ -145,38 +161,71 @@ def example_mad_figure(ref_image, image_metric1_min, image_metric1_max,
     for im, ax, diff_ax in zip(images, mad_axes, mad_diff_axes):
         if rescale:
             im = im / 255
-        print(im.min(), im.max(), vrange)
         po.imshow(im, ax=ax, zoom=1, title=None, vrange=vrange,
                   as_rgb=True if im.shape[1] == 3 else False)
         # average over the channels so we only have a single image to plot
         po.imshow((im-ref_image).mean(1, True), ax=diff_ax, zoom=.5,
                   title=None, vrange='indep0')
-    ref_ax.set_title("Reference image")
+    fontsize = plt.rcParams['font.size'] - 2
+    ref_ax.set_title("Reference image", fontsize=fontsize)
     ref_ax.annotate('', xytext=(1, .25), xy=(2.2, -.6),
                     xycoords='axes fraction',
                     arrowprops={'color': 'k',})
     ref_ax.text(1.4, 0, 'Initial distortion', transform=ref_ax.transAxes)
-    init_ax.annotate('', xytext=(.5, 1), xy=(.5, 1.5+2*hspace),
-                     xycoords='axes fraction',
-                     arrowprops={'color': 'b', 'shrink': .05})
-    init_ax.text(.55, 1.3, f'Minimum {metric1_name} for\nfixed {metric2_name}',
-                 transform=init_ax.transAxes, ha='left', va='center')
-    init_ax.annotate('', xytext=(.5, 0), xy=(.5, -.5-2*hspace),
-                     xycoords='axes fraction',
-                     arrowprops={'color': 'b', 'shrink': .05})
-    init_ax.text(.55, -.3, f'Maximum {metric1_name} for\nfixed {metric2_name}',
-                 transform=init_ax.transAxes, ha='left', va='center')
-    init_ax.annotate('', xytext=(1, .5), xy=(1.5+2*wspace, .5),
-                     xycoords='axes fraction',
-                     arrowprops={'color': 'r', 'shrink': .05})
-    init_ax.text(1.3, .55, f'Minimum {metric2_name} for\nfixed {metric1_name}',
-                 transform=init_ax.transAxes, va='bottom', ha='center')
     init_ax.annotate('', xytext=(0, .5), xy=(-.5-2*wspace, .5),
                      xycoords='axes fraction',
-                     arrowprops={'color': 'r', 'shrink': .05})
-    init_ax.text(-.3, .55, f'Maximum {metric2_name} for\nfixed {metric1_name}',
-                 transform=init_ax.transAxes, va='bottom', ha='center')
+                     arrowprops={'edgecolor': 'C1', 'facecolor': 'none',
+                                 'shrink': .05})
+    init_ax.text(-.3, .55,
+                 f'Min {metric1_name}\nfixed {metric2_name}',
+                 transform=init_ax.transAxes, ha='center', va='bottom',
+                 fontsize=fontsize)
+    init_ax.annotate('', xytext=(1, .5), xy=(1.5+2*wspace, .5),
+                     xycoords='axes fraction',
+                     arrowprops={'color': 'C1', 'shrink': .05})
+    init_ax.text(1.3, .55,
+                 f'Max {metric1_name}\nfixed {metric2_name}',
+                 transform=init_ax.transAxes, ha='center', va='bottom',
+                 fontsize=fontsize)
+    init_ax.annotate('', xytext=(.5, 1), xy=(.5, 1.5+2*hspace),
+                     xycoords='axes fraction',
+                     arrowprops={'edgecolor': 'C0', 'shrink': .05,
+                                 'facecolor': 'none'})
+    init_ax.text(.55, 1.3,
+                 f'Min {metric2_name}\nfixed {metric1_name}',
+                 transform=init_ax.transAxes, va='center', ha='left',
+                 fontsize=fontsize)
+    init_ax.annotate('', xytext=(.5, 0), xy=(.5, -.5-2*hspace),
+                     xycoords='axes fraction',
+                     arrowprops={'color': 'C0', 'shrink': .05})
+    init_ax.text(.55, -.3,
+                 f'Max {metric2_name}\nfixed {metric1_name}',
+                 transform=init_ax.transAxes, va='center', ha='left',
+                 fontsize=fontsize)
+    if annotate:
+        _annotate_example_mad_figure(fig, mad_axes + [init_ax, ref_ax])
     return fig
+
+
+def _annotate_example_mad_figure(fig, axes):
+    """Draw boxes around example mad figure to match simple MAD example."""
+    colors = ['C1', 'C1', 'C0', 'C0']
+    linestyles = ['--', '-', '--', '-']
+    for ax, c, sty in zip(axes, colors, linestyles):
+        rect = mpl.patches.Rectangle((0, 0), 1, 1,
+                                     edgecolor=c, linestyle=sty, facecolor='none',
+                                     transform=ax.transAxes)
+        fig.add_artist(rect)
+    # initial image
+    rect = mpl.patches.Rectangle((0, 0), 1, 1,
+                                 edgecolor='k', linestyle='-', facecolor='none',
+                                 transform=axes[-2].transAxes)
+    fig.add_artist(rect)
+    # reference image
+    rect = mpl.patches.Rectangle((0, 0), 1, 1,
+                                 edgecolor='r', linestyle='-', facecolor='none',
+                                 transform=axes[-1].transAxes)
+    fig.add_artist(rect)
 
 
 def mad_noise_levels_figure(ref_image, min_images, max_images, noise_levels,
@@ -264,4 +313,75 @@ def mad_noise_levels_figure(ref_image, min_images, max_images, noise_levels,
                             color='k', linestyle='--',
                             transform=fig.axes[0].transAxes)
     fig.add_artist(line)
+    return fig
+
+
+def simple_mad_level_set(seed=160):
+    """Generate the level set figure from the plenoptic simple MAD notebook.
+
+    Parameters
+    ----------
+    seed : int, optional
+        Seed to determine initial image. Default value is a good one.
+
+    Returns
+    -------
+    fig : plt.Figure
+        Figure containing plot
+
+    """
+    img = torch.tensor([.5, .5], dtype=torch.float32).reshape((1, 1, 1, 2))
+
+    def l1_norm(x, y):
+        return torch.norm(x-y, 1)
+    metrics = [po.tools.optim.l2_norm, l1_norm]
+    all_mad = {}
+
+    # this gets us all four possibilities
+    for t, (m1, m2) in itertools.product(['min', 'max'], zip(metrics, metrics[::-1])):
+        name = f'{m1.__name__}_{t}'
+        po.tools.set_seed(seed)
+        all_mad[name] = po.synth.MADCompetition(img, m1, m2, t, metric_tradeoff_lambda=1e4)
+        optim = torch.optim.Adam([all_mad[name].synthesized_signal], lr=.0001)
+        print(f"Synthesizing {name}")
+        all_mad[name].synthesize(store_progress=True, max_iter=1500, optimizer=optim)
+
+    # double-check that these are all equal.
+    assert all([torch.allclose(all_mad['l2_norm_min'].initial_signal, v.initial_signal) for v in all_mad.values()])
+
+    pal = {'l1_norm': 'C0', 'l2_norm': 'C1'}
+
+    l1 = po.to_numpy(torch.norm(all_mad['l2_norm_max'].reference_signal - all_mad['l2_norm_max'].initial_signal, 1))
+    l2 = po.to_numpy(torch.norm(all_mad['l2_norm_max'].reference_signal - all_mad['l2_norm_max'].initial_signal, 2))
+    ref = po.to_numpy(all_mad['l2_norm_max'].reference_signal.squeeze())
+    init = po.to_numpy(all_mad['l2_norm_max'].initial_signal.squeeze())
+
+    def circle(origin, r, n=1000):
+        theta = 2*np.pi/n*np.arange(0, n+1)
+        return np.array([origin[1]+r*np.cos(theta), origin[0]+r*np.sin(theta)])
+
+    def diamond(origin, r, n=1000):
+        theta = 2*np.pi/n*np.arange(0, n+1)
+        rotation = np.pi/4
+        square_correction = (np.abs(np.cos(theta-rotation)-np.sin(theta-rotation)) + np.abs(np.cos(theta-rotation)+np.sin(theta-rotation)))
+        square_correction /= square_correction[0]
+        r = r / square_correction
+        return np.array([origin[1]+r*np.cos(theta), origin[0]+r*np.sin(theta)])
+    l2_level_set = circle(ref, l2,)
+    l1_level_set = diamond(ref, l1)
+
+    fig, ax = plt.subplots(1, 1, figsize=(5, 5))
+    size = plt.rcParams['lines.markersize']**2
+    ax.scatter(*ref, label='reference', c='r', s=size)
+    ax.scatter(*init, label='initial', c='k', s=size)
+    ax.plot(*l1_level_set, pal['l1_norm']+'--', label='L1 norm level set')
+    ax.plot(*l2_level_set, pal['l2_norm']+'--', label='L2 norm level set')
+    size = (plt.rcParams['lines.markersize']/1.5)**2
+    for k, v in all_mad.items():
+        ec = pal[v.fixed_metric.__name__]
+        fc = 'none' if 'min' in k else ec
+        ax.scatter(*v.synthesized_signal.squeeze().detach(), fc=fc, ec=ec,
+                   label=k, s=size)
+    plt.legend(bbox_to_anchor=(1.04, 1), loc="upper left")
+
     return fig

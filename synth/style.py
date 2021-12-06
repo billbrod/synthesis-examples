@@ -46,7 +46,7 @@ def plotting_style(context='paper', for_package='matplotlib', figsize='full'):
                   'text.color': '.15', 'font.family': ['sans-serif'],
                   'font.sans-serif': ['Helvetica'],
                   'lines.solid_capstyle': 'round', 'patch.edgecolor': 'w',
-                  'patch.force_edgecolor': True, 'image.cmap': 'rocket',
+                  'patch.force_edgecolor': True,
                   'xtick.top': False, 'ytick.right': False,
                   'axes.grid': False, 'axes.facecolor': 'white',
                   'axes.edgecolor': '.15', 'grid.color': '.8',
@@ -85,12 +85,12 @@ def plotting_style(context='paper', for_package='matplotlib', figsize='full'):
             elif figsize == 'half':
                 figure_width = 3.25
         elif context == 'poster':
-            params.update({'font.size': 24,
-                           'axes.labelsize': 24,
-                           'axes.titlesize': 24,
-                           'xtick.labelsize': 20,
-                           'ytick.labelsize': 20,
-                           'legend.fontsize': 24,
+            params.update({'font.size': 18,
+                           'axes.labelsize': 18,
+                           'axes.titlesize': 18,
+                           'xtick.labelsize': 16,
+                           'ytick.labelsize': 16,
+                           'legend.fontsize': 18,
                            'axes.linewidth': 2.5,
                            'grid.linewidth': 2,
                            'lines.linewidth': 2,

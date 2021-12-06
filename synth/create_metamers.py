@@ -329,6 +329,39 @@ def setup_device(*args, gpu_id=None):
     return [a.to(device) for a in args]
 
 
+def add_center_to_image(model, image, reference_image):
+    r"""Add the reference image center to an image
+
+    The VentralStream class of models will do nothing to the center of
+    the image (they don't see the fovea), so we add the fovea to the
+    image before synthesis.
+
+    Parameters
+    ----------
+    model : plenoptic.simul.VentralStream
+        The model used to create the metamer. Specifically, we need its
+        windows attribute
+    image : torch.Tensor
+        The image to add the center back to
+    reference_image : torch.Tensor
+        The reference/target image for synthesis
+        (``metamer.base_signal``); the center comes from this image.
+
+    Returns
+    -------
+    recentered_image : torch.Tensor
+        ``image`` with the reference image center added back in
+
+    """
+    model(image)
+    rep = model.representation['mean_luminance']
+    dummy_ones = torch.ones_like(rep)
+    windows = model.PoolingWindows.project(dummy_ones).squeeze().to(image.device)
+    # these aren't exactly zero, so we can't convert it to boolean
+    anti_windows = 1 - windows
+    return ((windows * image) + (anti_windows * reference_image))
+
+
 def save(save_path, metamer):
     """Save Metamer object and its outputs.
 
@@ -357,6 +390,15 @@ def save(save_path, metamer):
     else:
         plot_model_response_error = True
     print("Saving at %s" % save_path)
+    if hasattr(metamer.model, 'PoolingWindows'):
+        # If we're using one of our foveated models, we add the center back at
+        # the end because our gradients are not exactly zero in the center, and
+        # thus those pixels end up getting moved around a little bit. Not
+        # entirely sure why, but probably not worth tracing down, since we're
+        # interested in the periphery
+        metamer.synthesized_signal = torch.nn.Parameter(add_center_to_image(metamer.model,
+                                                                            metamer.synthesized_signal,
+                                                                            metamer.target_signal))
     metamer.save(save_path)
     # save png of mad
     metamer_path = op.splitext(save_path)[0] + "_metamer.png"
