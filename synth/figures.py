@@ -136,20 +136,12 @@ def example_mad_figure(ref_image, image_metric1_min, image_metric1_max,
     # create all the axes
     ref_ax = fig.add_subplot(gs[:2, :2], **ax_kwargs)
     init_ax = fig.add_subplot(gs[3:5, 4:6], **ax_kwargs)
-    # mad_axes = [fig.add_subplot(gs[:2, 4:6], **ax_kwargs),
-    #             fig.add_subplot(gs[-2:, 4:6], **ax_kwargs),
-    #             fig.add_subplot(gs[3:5, 7:9], **ax_kwargs),
-    #             fig.add_subplot(gs[3:5, 1:3], **ax_kwargs)]
     mad_axes = [
         fig.add_subplot(gs[3:5, 1:3], **ax_kwargs),
         fig.add_subplot(gs[3:5, 7:9], **ax_kwargs),
         fig.add_subplot(gs[:2, 4:6], **ax_kwargs),
         fig.add_subplot(gs[-2:, 4:6], **ax_kwargs),
     ]
-    mad_diff_axes = [fig.add_subplot(gs[:1, 6:7], **ax_kwargs),
-                     fig.add_subplot(gs[-2:-1, 3:4], **ax_kwargs),
-                     fig.add_subplot(gs[3:4, 9:10], **ax_kwargs),
-                     fig.add_subplot(gs[3:4, 0:1], **ax_kwargs)]
     mad_diff_axes = [
         fig.add_subplot(gs[3:4, 0:1], **ax_kwargs),
         fig.add_subplot(gs[3:4, 9:10], **ax_kwargs),
