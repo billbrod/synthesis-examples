@@ -600,8 +600,12 @@ rule create_metamers:
     run:
         import synth
         import contextlib
+        import mpl
         with open(log[0], 'w', buffering=1) as log_file:
             with contextlib.redirect_stdout(log_file), contextlib.redirect_stderr(log_file):
+                # having issues with the default matplotlib backend causing
+                # core dumps
+                mpl.use('svg')
                 # bool('False') == True, so we do this to avoid that
                 # situation
                 if wildcards.coarse_to_fine == 'False':
@@ -679,8 +683,12 @@ rule create_mad_images:
     run:
         import synth
         import contextlib
+        import matplotlib as mpl
         with open(log[0], 'w', buffering=1) as log_file:
             with contextlib.redirect_stdout(log_file), contextlib.redirect_stderr(log_file):
+                # having issues with the default matplotlib backend causing
+                # core dumps
+                mpl.use('svg')
                 if wildcards.fix_model_num == '1':
                     assert wildcards.synth_model_num == '2'
                     fix_model_name = wildcards.model_name_1
@@ -901,6 +909,10 @@ rule example_mad_figure:
                 imgs = 255 * torch.cat(imgs)
                 model_name_1 = synth.figures.remap_model_name(wildcards.model_name_1)
                 model_name_2 = synth.figures.remap_model_name(wildcards.model_name_2)
+                if wildcards.context == 'poster' and 'VGG16' in model_name_2:
+                    # hack to make the name shorter, so text doesn't overlap
+                    # with images
+                    model_name_2 = model_name_2.split('_')[0]
                 annotate = True if wildcards.annot == "True" else False
                 fig = synth.figures.example_mad_figure(*imgs.unsqueeze(1),
                                                        model_name_1, model_name_2,
@@ -1014,3 +1026,12 @@ rule all_figures:
         op.join(config['DATA_DIR'], 'figures', 'paper', 'example_mad_1-l1_norm_2-l2_norm_img-einstein_size-256,256_init-20.svg'),
         op.join(config['DATA_DIR'], 'figures', 'paper', 'example_mad_1-l1_norm_2-l2_norm_img-reptil_skin_size-256,256_init-20.svg'),
         op.join(config['DATA_DIR'], 'figures', 'paper', 'example_mad_1-l1_norm_2-l2_norm_img-checkerboard_period-64_range-.1,.9_size-256,256_init-20.svg'),
+
+
+rule presentation_figures:
+    input:
+        op.join(config['DATA_DIR'], 'figures', 'poster', 'example_metamers_RGC-0.1_VGG16-pool3_V1-0.5.svg'),
+        op.join(config['DATA_DIR'], 'figures', 'poster', 'example_mad_1-l1_norm_2-l2_norm_img-einstein_size-256,256_init-20_annot-True.svg'),
+        op.join(config['DATA_DIR'], 'figures', 'poster', 'example_mad_1-l1_norm_2-l2_norm_img-checkerboard_period-64_range-.1,.9_size-256,256_init-20_annot-True.svg'),
+        op.join(config['DATA_DIR'], 'figures', 'poster', 'simple_mad_level_set_seed-160.svg'),
+        op.join(config['DATA_DIR'], 'figures', 'poster', 'example_mad_1-mse_2-VGG16_pool3_img-einstein_size-256,256_init-20_annot-True.svg'),

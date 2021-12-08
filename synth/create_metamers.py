@@ -212,7 +212,7 @@ def setup_model(model_name, image, min_ecc, max_ecc, cache_dir,
         t_width = 1
         std_dev = None
     if model_name.startswith('RGC') or model_name.startswith('V1'):
-        model_name, scaling = re.findall('([a-zA-z_0-9]+)_scaling-([0-9.]+)', model_name)[0]
+        model_name, scaling = re.findall('([a-zA-z_0-9-.]+)_scaling-([0-9.]+)', model_name)[0]
         scaling = float(scaling)
         if 'norm' not in model_name:
             if normalize_dict:

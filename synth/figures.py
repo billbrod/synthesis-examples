@@ -171,7 +171,7 @@ def example_mad_figure(ref_image, image_metric1_min, image_metric1_max,
     ref_ax.annotate('', xytext=(1, .25), xy=(2.2, -.6),
                     xycoords='axes fraction',
                     arrowprops={'color': 'k',})
-    ref_ax.text(1.4, 0, 'Initial distortion', transform=ref_ax.transAxes)
+    ref_ax.text(1.3, .1, 'Initial distortion', transform=ref_ax.transAxes)
     init_ax.annotate('', xytext=(0, .5), xy=(-.5-2*wspace, .5),
                      xycoords='axes fraction',
                      arrowprops={'edgecolor': 'C1', 'facecolor': 'none',
@@ -339,22 +339,23 @@ def simple_mad_level_set(seed=160):
 
     # this gets us all four possibilities
     for t, (m1, m2) in itertools.product(['min', 'max'], zip(metrics, metrics[::-1])):
-        name = f'{m1.__name__}_{t}'
+        name = f'{t}_{m1.__name__.capitalize()}'
         po.tools.set_seed(seed)
         all_mad[name] = po.synth.MADCompetition(img, m1, m2, t, metric_tradeoff_lambda=1e4)
         optim = torch.optim.Adam([all_mad[name].synthesized_signal], lr=.0001)
         print(f"Synthesizing {name}")
-        all_mad[name].synthesize(store_progress=True, max_iter=1500, optimizer=optim)
+        all_mad[name].synthesize(store_progress=True, max_iter=2000, optimizer=optim,
+                                 stop_criterion=1e-6)
 
     # double-check that these are all equal.
-    assert all([torch.allclose(all_mad['l2_norm_min'].initial_signal, v.initial_signal) for v in all_mad.values()])
+    assert all([torch.allclose(all_mad['min_L2_norm'].initial_signal, v.initial_signal) for v in all_mad.values()])
 
     pal = {'l1_norm': 'C0', 'l2_norm': 'C1'}
 
-    l1 = po.to_numpy(torch.norm(all_mad['l2_norm_max'].reference_signal - all_mad['l2_norm_max'].initial_signal, 1))
-    l2 = po.to_numpy(torch.norm(all_mad['l2_norm_max'].reference_signal - all_mad['l2_norm_max'].initial_signal, 2))
-    ref = po.to_numpy(all_mad['l2_norm_max'].reference_signal.squeeze())
-    init = po.to_numpy(all_mad['l2_norm_max'].initial_signal.squeeze())
+    l1 = po.to_numpy(torch.norm(all_mad['max_L2_norm'].reference_signal - all_mad['max_L2_norm'].initial_signal, 1))
+    l2 = po.to_numpy(torch.norm(all_mad['max_L2_norm'].reference_signal - all_mad['max_L2_norm'].initial_signal, 2))
+    ref = po.to_numpy(all_mad['max_L2_norm'].reference_signal.squeeze())
+    init = po.to_numpy(all_mad['max_L2_norm'].initial_signal.squeeze())
 
     def circle(origin, r, n=1000):
         theta = 2*np.pi/n*np.arange(0, n+1)
@@ -381,7 +382,8 @@ def simple_mad_level_set(seed=160):
         ec = pal[v.fixed_metric.__name__]
         fc = 'none' if 'min' in k else ec
         ax.scatter(*v.synthesized_signal.squeeze().detach(), fc=fc, ec=ec,
-                   label=k, s=size)
+                   label=k.replace('_', ' '), s=size)
     plt.legend(bbox_to_anchor=(1.04, 1), loc="upper left")
+    ax.set(xlabel='Pixel 1 value', ylabel='Pixel 2 value')
 
     return fig
