@@ -344,7 +344,8 @@ def simple_mad_level_set(seed=160):
         all_mad[name] = po.synth.MADCompetition(img, m1, m2, t, metric_tradeoff_lambda=1e4)
         optim = torch.optim.Adam([all_mad[name].synthesized_signal], lr=.0001)
         print(f"Synthesizing {name}")
-        all_mad[name].synthesize(store_progress=True, max_iter=1500, optimizer=optim)
+        all_mad[name].synthesize(store_progress=True, max_iter=2000, optimizer=optim,
+                                 stop_criterion=1e-6)
 
     # double-check that these are all equal.
     assert all([torch.allclose(all_mad['min_L2_norm'].initial_signal, v.initial_signal) for v in all_mad.values()])
@@ -383,5 +384,6 @@ def simple_mad_level_set(seed=160):
         ax.scatter(*v.synthesized_signal.squeeze().detach(), fc=fc, ec=ec,
                    label=k.replace('_', ' '), s=size)
     plt.legend(bbox_to_anchor=(1.04, 1), loc="upper left")
+    ax.set(xlabel='Pixel 1 value', ylabel='Pixel 2 value')
 
     return fig
