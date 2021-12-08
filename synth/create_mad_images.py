@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import itertools
 import torch
 import plenoptic as po
-import pyrtools as pt
+import re
 import time
 import numpy as np
 import os.path as op
@@ -168,7 +168,13 @@ def setup_metric(metric_name, image, min_ecc=None, max_ecc=None,
         model = create_metamers.setup_model(metric_name, image,
                                             min_ecc, max_ecc, cache_dir,
                                             normalize_dict)
-        model = create_metamers.setup_device(model, gpu_id=gpu_id)[0]
+        # similar trick to what we use in create_metamers.add_center_to_image
+        # to get the inverse of the windows
+        model(image)
+        dummy_ones = torch.ones_like(model.representation['mean_luminance'])
+        windows = model.PoolingWindows.project(dummy_ones)
+        ctr_lambda = float(re.findall('_ctr-([0-9.e+-]+)_', metric_name)[0])
+        model, windows = create_metamers.setup_device(model, windows, gpu_id=gpu_id)
         # do this because we want the metric name to reflect which model we're
         # using. We'll never be comparing the same model family against itself
         # (e.g., two V1 models with different scaling), so we just use visual
@@ -177,11 +183,15 @@ def setup_metric(metric_name, image, min_ecc=None, max_ecc=None,
         # that into a single value
         if metric_name.startswith('RGC'):
             def fov_rgc_metric(x1, x2):
-                return po.metric.mse(model(x1), model(x2)).mean()
+                rgc_loss = po.metric.mse(model(x1), model(x2)).mean()
+                ctr_loss = po.metric.mse((1-windows)*x1, (1-windows)*x2)
+                return rgc_loss + ctr_lambda * ctr_loss
             metric = fov_rgc_metric
         elif metric_name.startswith('V1'):
             def fov_v1_metric(x1, x2):
-                return po.metric.mse(model(x1), model(x2)).mean()
+                v1_loss = po.metric.mse(model(x1), model(x2)).mean()
+                ctr_loss = po.metric.mse((1-windows)*x1, (1-windows)*x2)
+                return v1_loss + ctr_lambda * ctr_loss
             metric = fov_v1_metric
     else:
         raise Exception(f"Don't know how to handle metric {metric_name}!")
