@@ -600,8 +600,12 @@ rule create_metamers:
     run:
         import synth
         import contextlib
+        import mpl
         with open(log[0], 'w', buffering=1) as log_file:
             with contextlib.redirect_stdout(log_file), contextlib.redirect_stderr(log_file):
+                # having issues with the default matplotlib backend causing
+                # core dumps
+                mpl.use('svg')
                 # bool('False') == True, so we do this to avoid that
                 # situation
                 if wildcards.coarse_to_fine == 'False':
@@ -679,8 +683,12 @@ rule create_mad_images:
     run:
         import synth
         import contextlib
+        import matplotlib as mpl
         with open(log[0], 'w', buffering=1) as log_file:
             with contextlib.redirect_stdout(log_file), contextlib.redirect_stderr(log_file):
+                # having issues with the default matplotlib backend causing
+                # core dumps
+                mpl.use('svg')
                 if wildcards.fix_model_num == '1':
                     assert wildcards.synth_model_num == '2'
                     fix_model_name = wildcards.model_name_1
