@@ -154,6 +154,17 @@ def setup_metric(metric_name, image, min_ecc=None, max_ecc=None,
         def ps_texture_metric(x1, x2):
             return po.metric.mse(model(x1), model(x2))
         metric = ps_texture_metric
+    elif metric_name.startswith('OnOff'):
+        model = create_metamers.setup_model(metric_name, image, min_ecc,
+                                            max_ecc, cache_dir, normalize_dict)
+        model = create_metamers.setup_device(model, gpu_id=gpu_id)[0]
+        # OnOff only accepts grayscale images, so we average across RGB
+        # channels. average across the output because our output will have two
+        # channels, one for on, one for off
+        def onoff_metric(x1, x2):
+            return po.metric.mse(model(x1.mean(1, True)),
+                                 model(x2.mean(1, True))).mean()
+        metric = onoff_metric
     elif 'VGG16' in metric_name:
         model = create_metamers.setup_model(metric_name, image, min_ecc,
                                             max_ecc, cache_dir, normalize_dict)

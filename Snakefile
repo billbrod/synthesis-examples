@@ -91,6 +91,10 @@ MAD_TRADEOFF = {
     ('1-l1_norm_2-l2_norm', 'fix-1_synth-2_min'): 1e-4,
     ('1-l1_norm_2-l2_norm', 'fix-2_synth-1_max'): 1e2,
     ('1-l1_norm_2-l2_norm', 'fix-2_synth-1_min'): 1e3,
+    ('1-OnOff_pretrained-True_size-31_norm_2-VGG16_pool3', 'fix-1_synth-2_max'): 1e19,
+    ('1-OnOff_pretrained-True_size-31_norm_2-VGG16_pool3', 'fix-1_synth-2_min'): 5e14,
+    ('1-OnOff_pretrained-True_size-31_norm_2-VGG16_pool3', 'fix-2_synth-1_max'): 1e-8,
+    ('1-OnOff_pretrained-True_size-31_norm_2-VGG16_pool3', 'fix-2_synth-1_min'): 1e-8,
 }
 
 # the above was all done with noise level of 20, so the following gives a
@@ -831,7 +835,7 @@ def get_mad_images(wildcards):
     template_path = config['MAD_TEMPLATE_PATH']
     # these are shared by all the mad images we want to grab
     kwargs = {'optimizer': 'Adam', 'stop_iters': 50, 'seed': 0,
-              'min_ecc': .5, 'max_ecc': 3, 'stop_criterion': 1e-9, 'gpu': 1,
+              'min_ecc': .5, 'max_ecc': 3, 'gpu': 1,
               # because of how we set up the constant DATA_DIR, we know it ends
               # with a /, which we need to remove for this
               'learning_rate': .1, 'DATA_DIR': DATA_DIR[:-1]}
@@ -849,6 +853,8 @@ def get_mad_images(wildcards):
         order = [((2, 1), 'min'), ((2, 1), 'max')]
     max_iter = 100000
     mads = []
+    # OnOff's loss is so very small, so need to reduce the stop criterion
+    stop_criterion = 1e-9 if 'OnOff' not in model1 and 'OnOff' not in model2 else 1e-18
     for (synth, fix), target in order:
         tradeoff_base = MAD_TRADEOFF.get((f'1-{model1}_2-{model2}',
                                           f'fix-{fix}_synth-{synth}_{target}'), None)
@@ -869,6 +875,7 @@ def get_mad_images(wildcards):
                                              model_name_2=model2,
                                              init_type=noise,
                                              image_name=wildcards.image_name,
+                                             stop_criterion=stop_criterion,
                                              **kwargs))
     return mads
 
