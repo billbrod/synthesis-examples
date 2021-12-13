@@ -600,7 +600,7 @@ rule create_metamers:
     run:
         import synth
         import contextlib
-        import mpl
+        import matplotlib as mpl
         with open(log[0], 'w', buffering=1) as log_file:
             with contextlib.redirect_stdout(log_file), contextlib.redirect_stderr(log_file):
                 # having issues with the default matplotlib backend causing
@@ -750,10 +750,10 @@ def get_metamers(wildcards):
               'DATA_DIR': DATA_DIR[:-1]}
     images = ['einstein_size-256,256', 'reptil_skin_size-256,256', 'checkerboard_period-64_range-.1,.9_size-256,256']
     models = [f'RGC_norm_gaussian_scaling-{wildcards.RGC_scaling}', 'PSTexture', f'VGG16_pool{wildcards.poolN}',
-              f'V1_norm_s4_gaussian_scaling-{wildcards.V1_scaling}']
+              f'V1_norm_s4_gaussian_scaling-{wildcards.V1_scaling}', 'OnOff_pretrained-True_size-31']
     metamers = []
     for model in models:
-        default_penalty = {'RGC': 1.5, 'V1': 1.5, 'VGG16': 1e3, 'PSTexture': 0.5}[model.split('_')[0]]
+        default_penalty = {'RGC': 1.5, 'V1': 1.5, 'VGG16': 1e3, 'PSTexture': 0.5, 'OnOff': 1}[model.split('_')[0]]
         lr = .005 if model.startswith("VGG16") else .01
         ctf = {'V1': 'together', 'PSTexture': 'together'}.get(model.split('_')[0], False)
         ctf_iters = {'V1': 50, 'PSTexture': 15}.get(model.split('_')[0], None)
@@ -811,6 +811,7 @@ rule example_metamer_figure:
                 n_imgs = len(input.target_images)
                 models = {f'fov_lum({wildcards.RGC_scaling})': imgs[n_imgs:2*n_imgs],
                           f'fov_energy({wildcards.V1_scaling})': imgs[4*n_imgs:5*n_imgs],
+                          'OnOff': imgs[5*n_imgs:6*n_imgs],
                           'PS_texture': imgs[2*n_imgs:3*n_imgs],
                           f'VGG16_pool{wildcards.poolN}': imgs[3*n_imgs:4*n_imgs]}
                 fig = synth.figures.example_metamer_figure(imgs[:n_imgs], **models)

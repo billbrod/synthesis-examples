@@ -249,6 +249,15 @@ def setup_model(model_name, image, min_ecc, max_ecc, cache_dir,
                                  num_scales=num_scales,
                                  window_type=window_type,
                                  moments=moments)
+    elif model_name.startswith('OnOff'):
+        pretrained, kernel_size = re.findall('OnOff_pretrained-([a-zA-z]+)_size-([0-9]+)', model_name)[0]
+        if pretrained == 'True':
+            pretrained = True
+        else:
+            pretrained = False
+        if pretrained:
+            assert int(kernel_size) == 31
+        model = po.simul.OnOff(int(kernel_size), pretrained=pretrained)
     elif model_name == 'PSTexture':
         model = po.simul.PortillaSimoncelli(image.shape[-2:], n_scales=4,
                                             n_orientations=4,
