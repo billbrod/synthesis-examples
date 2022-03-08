@@ -754,7 +754,7 @@ def get_metamers(wildcards):
               'DATA_DIR': DATA_DIR[:-1]}
     images = ['einstein_size-256,256', 'reptil_skin_size-256,256', 'checkerboard_period-64_range-.1,.9_size-256,256']
     models = [f'RGC_norm_gaussian_scaling-{wildcards.RGC_scaling}', 'PSTexture', f'VGG16_pool{wildcards.poolN}',
-              f'V1_norm_s4_gaussian_scaling-{wildcards.V1_scaling}', 'OnOff_pretrained-True_size-31']
+              f'V1_norm_s4_gaussian_scaling-{wildcards.V1_scaling}',]# 'OnOff_pretrained-True_size-31']
     metamers = []
     for model in models:
         default_penalty = {'RGC': 1.5, 'V1': 1.5, 'VGG16': 1e3, 'PSTexture': 0.5, 'OnOff': 1}[model.split('_')[0]]
