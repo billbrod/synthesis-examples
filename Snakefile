@@ -754,7 +754,7 @@ def get_metamers(wildcards):
               'DATA_DIR': DATA_DIR[:-1]}
     images = ['einstein_size-256,256', 'reptil_skin_size-256,256', 'checkerboard_period-64_range-.1,.9_size-256,256']
     models = [f'RGC_norm_gaussian_scaling-{wildcards.RGC_scaling}', 'PSTexture', f'VGG16_pool{wildcards.poolN}',
-              f'V1_norm_s4_gaussian_scaling-{wildcards.V1_scaling}',]# 'OnOff_pretrained-True_size-31']
+              f'V1_norm_s4_gaussian_scaling-{wildcards.V1_scaling}']
     metamers = []
     for model in models:
         default_penalty = {'RGC': 1.5, 'V1': 1.5, 'VGG16': 1e3, 'PSTexture': 0.5, 'OnOff': 1}[model.split('_')[0]]
@@ -815,7 +815,6 @@ rule example_metamer_figure:
                 n_imgs = len(input.target_images)
                 models = {f'fov_lum({wildcards.RGC_scaling})': imgs[n_imgs:2*n_imgs],
                           f'fov_energy({wildcards.V1_scaling})': imgs[4*n_imgs:5*n_imgs],
-                          'OnOff': imgs[5*n_imgs:6*n_imgs],
                           'PS_texture': imgs[2*n_imgs:3*n_imgs],
                           f'VGG16_pool{wildcards.poolN}': imgs[3*n_imgs:4*n_imgs]}
                 fig = synth.figures.example_metamer_figure(imgs[:n_imgs], **models)
