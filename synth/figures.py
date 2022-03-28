@@ -13,6 +13,15 @@ def remap_model_name(model_name):
         model_name = 'fov_lum(' + model_name.split('scaling-')[-1] + ')'
     elif 'V1' in model_name:
         model_name = 'fov_energy(' + model_name.split('scaling-')[-1] + ')'
+    model_name = ' '.join([s.capitalize() for s in model_name.split('_')])
+    if model_name == 'Mse':
+        model_name = 'MSE'
+    elif model_name == 'Ssim':
+        model_name = 'SSIM'
+    elif 'Ps Texture' in model_name:
+        model_name = model_name.replace("Ps", "PS")
+    elif 'Vgg' in model_name:
+        model_name = model_name.replace("Vgg", "VGG")
     return model_name
 
 
@@ -49,7 +58,7 @@ def example_metamer_figure(ref_images, vrange=(0, 1), **kwargs):
     fig = po.imshow(imgs, title=None, vrange=vrange, col_wrap=col_wrap,
                     as_rgb=True, zoom=1)
     for ax, title in zip(fig.axes[:col_wrap], titles):
-        ax.set_title(title)
+        ax.set_title(remap_model_name(title))
     # this is the space between axes
     space = 10 / imgs[0].shape[-1]
     # this line separates the target image axes from the metamer axes, all the

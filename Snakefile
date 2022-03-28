@@ -919,7 +919,7 @@ rule example_mad_figure:
                 if wildcards.context == 'poster' and 'VGG16' in model_name_2:
                     # hack to make the name shorter, so text doesn't overlap
                     # with images
-                    model_name_2 = model_name_2.split('_')[0]
+                    model_name_2 = model_name_2.split(' ')[0]
                 annotate = True if wildcards.annot == "True" else False
                 fig = synth.figures.example_mad_figure(*imgs.unsqueeze(1),
                                                        model_name_1, model_name_2,
